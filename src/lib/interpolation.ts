@@ -1,6 +1,3 @@
-import type { AudioManager } from './audio'
-import type { Interpolation } from './types'
-
 export function linearInterpolation(array: Uint8Array, index: number): number {
 	const lowerIndex = Math.floor(index)
 	const upperIndex = Math.ceil(index)

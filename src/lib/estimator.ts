@@ -4,7 +4,7 @@ import { findFundamentalFrequency, findMaximumFrequencies } from './basic_estima
 import type { SpectrogramSettings } from './types'
 
 export class EstimatorManager {
-	private latestResult: EstimatorResult | null = null
+	private results: EstimatorResult[] = []
 	private pitchDetector: PitchDetector<Float32Array> | null = null
 
 	constructor(private audioManager: AudioManager) {}
@@ -12,12 +12,10 @@ export class EstimatorManager {
 	async initialize() {}
 
 	update(settings: SpectrogramSettings) {
-		const timeBuffer = this.audioManager.getTimeBuffer()
-		const freqBuffer = this.audioManager.getFreqBuffer()
-
 		const fundamentalFrequency = findFundamentalFrequency(this.audioManager, 8)
 		const frequencyMaximas = findMaximumFrequencies(this.audioManager, 3, settings)
 
+		const timeBuffer = this.audioManager.getTimeBuffer()
 		if (!this.pitchDetector || this.pitchDetector.inputLength != timeBuffer.length) {
 			this.pitchDetector = PitchDetector.forFloat32Array(timeBuffer.length)
 		}
@@ -26,16 +24,23 @@ export class EstimatorManager {
 			this.audioManager.getSampleRate(),
 		)
 
-		this.latestResult = {
+		if (this.results.length > 100) {
+			this.results.pop()
+		}
+		this.results.unshift({
 			fundamentalFrequency,
 			frequencyMaximas,
 			pitchyFrequency,
 			pitchyConfidence,
-		} as EstimatorResult
+		} as EstimatorResult)
 	}
 
 	getResult() {
-		return this.latestResult!
+		return this.results[0]
+	}
+
+	getResults() {
+		return this.results
 	}
 }
 

@@ -1,28 +1,16 @@
 <script lang="ts">
 	import { logScale, inverseLogScale } from '../lib/utils'
+	import { settings } from '../lib/store'
 
-	let { id, lowerFrequency = $bindable(), upperFrequency = $bindable() } = $props()
+	let { id } = $props()
 
 	const MIN_FREQ = 20
 	const MAX_FREQ = 20000
 	const MIN_RANGE_RATIO = 0.05
 
-	let lowerPercentage = $state(0)
-	let upperPercentage = $state(1)
+	let lowerPercentage = $derived(inverseLogScale($settings.lowerFrequency, MIN_FREQ, MAX_FREQ))
+	let upperPercentage = $derived(inverseLogScale($settings.upperFrequency, MIN_FREQ, MAX_FREQ))
 
-	// Update internal positions when external frequencies change
-	$effect(() => {
-		lowerPercentage = inverseLogScale(lowerFrequency, MIN_FREQ, MAX_FREQ)
-		upperPercentage = inverseLogScale(upperFrequency, MIN_FREQ, MAX_FREQ)
-	})
-
-	// Update frequencies when positions change
-	function updateFrequencies() {
-		lowerFrequency = Math.round(logScale(lowerPercentage, MIN_FREQ, MAX_FREQ))
-		upperFrequency = Math.round(logScale(upperPercentage, MIN_FREQ, MAX_FREQ))
-	}
-
-	// Handle dragging
 	function handleDrag(event: MouseEvent, isLower: boolean) {
 		const slider = event.currentTarget as HTMLElement
 		const rect = slider.parentElement!.getBoundingClientRect()
@@ -31,16 +19,15 @@
 
 		function onMove(moveEvent: MouseEvent) {
 			const delta = (moveEvent.clientX - startX) / rect.width
-			let newPos = Math.max(0, Math.min(1, startPos + delta))
+			let newPercentage = Math.max(0, Math.min(1, startPos + delta))
 
 			if (isLower) {
-				newPos = Math.min(newPos, upperPercentage - MIN_RANGE_RATIO)
-				lowerPercentage = newPos
+				newPercentage = Math.min(newPercentage, upperPercentage - MIN_RANGE_RATIO)
+				$settings.lowerFrequency = logScale(newPercentage, MIN_FREQ, MAX_FREQ)
 			} else {
-				newPos = Math.max(newPos, lowerPercentage + MIN_RANGE_RATIO)
-				upperPercentage = newPos
+				newPercentage = Math.max(newPercentage, lowerPercentage + MIN_RANGE_RATIO)
+				$settings.upperFrequency = logScale(newPercentage, MIN_FREQ, MAX_FREQ)
 			}
-			updateFrequencies()
 		}
 
 		function onUp() {
@@ -65,14 +52,14 @@
 		style="left: {lowerPercentage * 100}%"
 		onmousedown={(e) => handleDrag(e, true)}
 	>
-		<span class="freq-label">{Math.round(lowerFrequency)} Hz</span>
+		<span class="freq-label">{Math.round($settings.lowerFrequency)} Hz</span>
 	</button>
 	<button
 		class="handle handle-upper"
 		style="left: {upperPercentage * 100}%"
 		onmousedown={(e) => handleDrag(e, false)}
 	>
-		<span class="freq-label">{Math.round(upperFrequency)} Hz</span>
+		<span class="freq-label">{Math.round($settings.upperFrequency)} Hz</span>
 	</button>
 </div>
 
@@ -83,6 +70,7 @@
 		height: 40px;
 		display: flex;
 		align-items: center;
+		margin-right: 25px;
 		margin-bottom: 25px;
 	}
 

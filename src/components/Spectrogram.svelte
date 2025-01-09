@@ -56,6 +56,18 @@
 		if (!paused) {
 			audioManager.update(settings)
 			estimatorManager.update(settings)
+			if (settings.followPitch) {
+				const history = 20
+				const frequencies = estimatorManager
+					.getResults()
+					.map((item) => item.pitchyFrequency)
+					.filter((item) => item > 20)
+				if (frequencies.length >= history) {
+					const frequency = frequencies.slice(0, history).reduce((a, item) => a + item, 0) / history
+					$settingsStore.lowerFrequency = frequency / 1.25
+					$settingsStore.upperFrequency = frequency * 1.25
+				}
+			}
 		}
 		renderer!.render(settings, mousePosition, paused)
 		requestAnimationFrame(render)

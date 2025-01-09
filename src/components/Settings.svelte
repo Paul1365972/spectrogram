@@ -63,11 +63,7 @@
 
 	<div class="setting">
 		<label for="frequency-range">Frequency Range</label>
-		<DualSlider
-			id="frequency-range"
-			bind:lowerFrequency={$settings.lowerFrequency}
-			bind:upperFrequency={$settings.upperFrequency}
-		></DualSlider>
+		<DualSlider id="frequency-range"></DualSlider>
 	</div>
 
 	<div class="setting">
@@ -99,6 +95,11 @@
 		<label for="volume">Volume</label>
 		<input type="range" id="volume" min="0" max="100" step="1" bind:value={$settings.volume} />
 		<span>{$settings.volume}%</span>
+	</div>
+
+	<div class="setting">
+		<label for="follow-pitch">Follow Pitch</label>
+		<input id="follow-pitch" type="checkbox" bind:checked={$settings.followPitch} />
 	</div>
 </div>
 

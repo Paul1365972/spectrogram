@@ -11,6 +11,7 @@ export type SpectrogramSettings = {
 	scala: ScalaVariant
 	speed: number
 	volume: number
+	followPitch: boolean
 }
 
 export type TickVariant = 'none' | 'preset' | 'notes'

@@ -14,4 +14,5 @@ export const settings = persisted('settings', {
 	scala: 'log',
 	speed: 5,
 	volume: 50,
+	followPitch: false,
 } as SpectrogramSettings)
