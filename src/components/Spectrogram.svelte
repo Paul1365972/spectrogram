@@ -27,13 +27,11 @@
 		window.addEventListener('mousedown', init)
 		window.addEventListener('touchstart', init)
 		window.addEventListener('keydown', handleKeydown)
-		window.addEventListener('resize', handleResize)
 
 		return () => {
 			window.removeEventListener('mousedown', init)
 			window.removeEventListener('touchstart', init)
 			window.removeEventListener('keydown', handleKeydown)
-			window.removeEventListener('resize', handleResize)
 		}
 	})
 
@@ -51,10 +49,6 @@
 			event.preventDefault()
 			paused = !paused
 		}
-	}
-
-	function handleResize() {
-		renderer!.handleResize()
 	}
 
 	function render() {
