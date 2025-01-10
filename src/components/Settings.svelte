@@ -39,12 +39,13 @@
 
 	<div class="setting">
 		<label for="fft-size">FFT Size</label>
+
 		<select id="fft-size" bind:value={$settings.fftSize}>
-			<option value="1024">1024 Points</option>
-			<option value="2048">2048 Points</option>
-			<option value="4096">4096 Points</option>
-			<option value="8192">8192 Points</option>
-			<option value="16384">16384 Points</option>
+			<option value={1024}>1024 Points</option>
+			<option value={2048}>2048 Points</option>
+			<option value={4096}>4096 Points</option>
+			<option value={8192}>8192 Points</option>
+			<option value={16384}>16384 Points</option>
 		</select>
 	</div>
 

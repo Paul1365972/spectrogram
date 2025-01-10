@@ -1,12 +1,12 @@
+import { SpectrogramRenderer } from './spectrogram_renderer'
 import type { SpectrogramSettings } from './types'
 import { AudioManager } from './audio'
-import { decibelToColor, getTextColor } from './color_maps'
-import { scale, inverseLogScale, NOTES } from './utils'
-import { averagingInterpolation, linearInterpolation, maximumInterpolation } from './interpolation'
+import { getTextColor } from './color_maps'
+import { inverseLogScale, scale, NOTES } from './utils'
 import type { EstimatorManager } from './estimator'
 
-export class SpectrogramRenderer {
-	private bgCanvas: HTMLCanvasElement
+export class Renderer {
+	private webglSpectrogram: SpectrogramRenderer
 	private width: number
 	private height: number
 
@@ -15,7 +15,8 @@ export class SpectrogramRenderer {
 		private audioManager: AudioManager,
 		private estimatorManager: EstimatorManager,
 	) {
-		this.bgCanvas = document.createElement('canvas')
+		this.webglSpectrogram = new SpectrogramRenderer(audioManager)
+
 		this.width = window.innerWidth
 		this.height = window.innerHeight
 		this.handleResize()
@@ -27,67 +28,11 @@ export class SpectrogramRenderer {
 			this.height = window.innerHeight
 			this.canvas.width = this.width
 			this.canvas.height = this.height
-			this.bgCanvas.width = this.width
-			this.bgCanvas.height = this.height
-			const ctx = this.bgCanvas.getContext('2d')!
-			ctx.fillStyle = 'gray'
-			ctx.fillRect(0, 0, this.width, this.height)
-		}
-	}
-
-	renderSpectrogram(settings: SpectrogramSettings, bgCtx: CanvasRenderingContext2D) {
-		const freqBuffer = this.audioManager.getFreqBuffer()
-
-		for (let i = 0; i < this.height; i++) {
-			const freq = scale(
-				1.0 - (1.0 * i) / this.height,
-				settings.scala,
-				settings.lowerFrequency,
-				settings.upperFrequency,
-			)
-			const lowFreq = scale(
-				1.0 - (i + 0.5) / this.height,
-				settings.scala,
-				settings.lowerFrequency,
-				settings.upperFrequency,
-			)
-			const highFreq = scale(
-				1.0 - (i - 0.5) / this.height,
-				settings.scala,
-				settings.lowerFrequency,
-				settings.upperFrequency,
-			)
-
-			let value
-			if (settings.interpolation === 'nearest') {
-				value = freqBuffer[Math.round(this.audioManager.freqToIndex(freq))]
-			} else if (settings.interpolation === 'linear') {
-				value = linearInterpolation(freqBuffer, this.audioManager.freqToIndex(freq))
-			} else if (settings.interpolation === 'maximum') {
-				value = maximumInterpolation(
-					freqBuffer,
-					this.audioManager.freqToIndex(lowFreq),
-					this.audioManager.freqToIndex(highFreq),
-				)
-			} else if (settings.interpolation === 'averaging') {
-				value = averagingInterpolation(
-					freqBuffer,
-					this.audioManager.freqToIndex(lowFreq),
-					this.audioManager.freqToIndex(highFreq),
-				)
-			} else {
-				value = 0
-			}
-
-			const [r, g, b] = decibelToColor(value, settings.colorMap)
-			bgCtx.fillStyle = `rgb(${r},${g},${b})`
-			bgCtx.fillRect(this.width - settings.speed, i, settings.speed, 1)
 		}
 	}
 
 	renderPresetTicks(ctx: CanvasRenderingContext2D, settings: SpectrogramSettings) {
 		const freqs = [20, 30, 50, 100, 200, 261.6, 300, 440, 500, 1000, 2000, 3000, 5000, 10000]
-
 		for (const freq of freqs) {
 			this.drawTick(ctx, settings, this.width - 20, freq, `${freq.toFixed(0)} Hz`, 18)
 		}
@@ -124,15 +69,15 @@ export class SpectrogramRenderer {
 	}
 
 	drawPoint(
-		bgCtx: CanvasRenderingContext2D,
+		ctx: CanvasRenderingContext2D,
 		settings: SpectrogramSettings,
 		frequency: number,
 		color: string,
 	) {
-		bgCtx.fillStyle = color
+		ctx.fillStyle = color
 		const percentage = inverseLogScale(frequency, settings.lowerFrequency, settings.upperFrequency)
 		const y = Math.round((1.0 - percentage) * this.height)
-		bgCtx.fillRect(this.width - settings.speed, y - 1, settings.speed, 3)
+		ctx.fillRect(this.width - settings.speed, y - 1, settings.speed, 3)
 	}
 
 	renderNoteGuidelines(ctx: CanvasRenderingContext2D, settings: SpectrogramSettings) {
@@ -173,23 +118,27 @@ export class SpectrogramRenderer {
 	render(settings: SpectrogramSettings, mousePosition: [number, number], paused: boolean) {
 		this.handleResize()
 
+		// Update and render WebGL spectrogram
+		const freqBuffer = this.audioManager.getFreqBuffer()
+		if (!paused) {
+			this.webglSpectrogram.update(freqBuffer)
+		}
+		this.webglSpectrogram.render(settings, this.width, this.height)
+
+		// Get 2D context for overlay
+		const ctx = this.canvas.getContext('2d')!
+
+		// TODO Readd note path
+
+		// Clear overlay canvas
+		ctx.clearRect(0, 0, this.width, this.height)
+
+		// Copy WebGL canvas to overlay canvas
+		ctx.drawImage(this.webglSpectrogram.getCanvas(), 0, 0)
+
 		const estimators = this.estimatorManager.getResult()
 
-		// Background
-		const bgCtx = this.bgCanvas.getContext('2d')!
-		if (!paused) {
-			bgCtx.drawImage(this.bgCanvas, -settings.speed, 0)
-		}
-		this.renderSpectrogram(settings, bgCtx)
-
-		if (estimators.pitchyFrequency > 20 && estimators.pitchyConfidence > 0.5) {
-			this.drawPoint(bgCtx, settings, estimators.pitchyFrequency, `limegreen`)
-		}
-
-		// Foreground
-		const ctx = this.canvas.getContext('2d')!
-		ctx.drawImage(this.bgCanvas, 0, 0)
-
+		// Render overlay elements
 		if (settings.noteGuidelines) {
 			this.renderNoteGuidelines(ctx, settings)
 		}
@@ -200,6 +149,7 @@ export class SpectrogramRenderer {
 			this.renderNoteTicks(ctx, settings)
 		}
 
+		// Render estimator results
 		for (const frequency of estimators.frequencyMaximas) {
 			this.drawTick(ctx, settings, this.width - 120, frequency, null, 18)
 		}

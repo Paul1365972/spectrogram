@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte'
 	import { get } from 'svelte/store'
 	import { AudioManager } from '../lib/audio'
-	import { SpectrogramRenderer } from '../lib/renderer'
+	import { Renderer } from '../lib/renderer'
 	import { scale } from '../lib/utils'
 	import { settings as settingsStore } from '../lib/store'
 	import { EstimatorManager } from '../lib/estimator'
@@ -15,14 +15,14 @@
 
 	let audioManager: AudioManager
 	let estimatorManager: EstimatorManager
-	let renderer: SpectrogramRenderer
+	let renderer: Renderer
 
 	let mousePosition: [number, number] = [0, 0]
 
 	onMount(() => {
 		audioManager = new AudioManager()
 		estimatorManager = new EstimatorManager(audioManager)
-		renderer = new SpectrogramRenderer(canvas, audioManager, estimatorManager)
+		renderer = new Renderer(canvas, audioManager, estimatorManager)
 
 		window.addEventListener('mousedown', init)
 		window.addEventListener('touchstart', init)
