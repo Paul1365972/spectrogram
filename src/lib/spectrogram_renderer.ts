@@ -1,11 +1,15 @@
 import type { AudioManager } from './audio'
-import type { SpectrogramSettings } from './types'
+import { COLOR_MAPS, getColorMap } from './color_maps'
+import type { SpectrogramSettings } from './settings'
+
+const SPECTROGRAM_WIDTH = 2048
 
 export class SpectrogramRenderer {
 	private readonly gl: WebGL2RenderingContext
 	private readonly program: WebGLProgram
 	private readonly vertexBuffer: WebGLBuffer
 	private readonly dataTexture: WebGLTexture
+	private readonly colorMapTexture: WebGLTexture
 	private readonly uniformLocations: {
 		offset: WebGLUniformLocation
 		lowerFrequency: WebGLUniformLocation
@@ -37,11 +41,13 @@ export class SpectrogramRenderer {
 		this.gl = gl
 
 		// Initialize all required WebGL resources
-		const { program, vertexBuffer, dataTexture, uniformLocations } = this.initWebGL(gl)
+		const { program, vertexBuffer, dataTexture, colorMapTexture, uniformLocations } =
+			this.initWebGL(gl)
 
 		this.program = program
 		this.vertexBuffer = vertexBuffer
 		this.dataTexture = dataTexture
+		this.colorMapTexture = colorMapTexture
 		this.uniformLocations = uniformLocations
 		this.changeSettings(1, 1, 1)
 	}
@@ -58,30 +64,90 @@ export class SpectrogramRenderer {
 			speed: this.getUniformLocation(gl, program, 'speed'),
 			scala: this.getUniformLocation(gl, program, 'scala'),
 			colorMap: this.getUniformLocation(gl, program, 'colorMap'),
+			colorMapTexture: this.getUniformLocation(gl, program, 'colorMapTexture'),
 		}
 
 		const vertexBuffer = this.createVertexBuffer(gl)
 		const dataTexture = this.createDataTexture(gl)
+		const colorMapTexture = this.createColorMapTexture(gl)
 
 		return {
 			program,
 			vertexBuffer,
 			dataTexture,
+			colorMapTexture,
 			uniformLocations,
 		}
 	}
 
-	private getUniformLocation(
-		gl: WebGLRenderingContext,
-		program: WebGLProgram,
-		name: string,
-	): WebGLUniformLocation {
-		const location = gl.getUniformLocation(program, name)
-		// TODO
-		//if (!location) {
-		//    throw new Error(`Could not get uniform location for: ${name}`)
-		//}
-		return location!
+	private createVertexBuffer(gl: WebGLRenderingContext) {
+		const vertices = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1])
+
+		const buffer = gl.createBuffer()
+		if (!buffer) {
+			throw new Error('Failed to create vertex buffer')
+		}
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+		gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
+
+		return buffer
+	}
+
+	private createDataTexture(gl: WebGLRenderingContext) {
+		const texture = gl.createTexture()
+		if (!texture) {
+			throw new Error('Failed to create texture')
+		}
+		gl.bindTexture(gl.TEXTURE_2D, texture)
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		return texture
+	}
+
+	private createColorMapTexture(gl: WebGLRenderingContext): WebGLTexture {
+		const texture = gl.createTexture()
+		if (!texture) {
+			throw new Error('Failed to create color map texture')
+		}
+
+		// Generate color map lookup table
+		const colorData = new Uint8Array(256 * 3 * COLOR_MAPS.length)
+
+		// Fill the color data using the provided getColor function
+		for (let i = 0; i < COLOR_MAPS.length; i++) {
+			let array = getColorMap(COLOR_MAPS[i])
+			for (let j = 0; j < 256; j++) {
+				const [r, g, b] = array[j]
+				colorData[(i * 256 + j) * 3] = r
+				colorData[(i * 256 + j) * 3 + 1] = g
+				colorData[(i * 256 + j) * 3 + 2] = b
+			}
+		}
+
+		gl.bindTexture(gl.TEXTURE_2D, texture)
+		gl.texImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGB,
+			256,
+			COLOR_MAPS.length,
+			0,
+			gl.RGB,
+			gl.UNSIGNED_BYTE,
+			colorData,
+		)
+
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+		return texture
 	}
 
 	private createProgram(gl: WebGLRenderingContext) {
@@ -99,30 +165,29 @@ export class SpectrogramRenderer {
             precision mediump float;
             varying vec2 texCoord;
             uniform sampler2D audioData;
+            uniform sampler2D colorMapTexture;
             uniform float offset;
             uniform float speed;
             uniform float lowerFrequency;
             uniform float upperFrequency;
-            uniform float hzPerBin;
+            uniform float nyquistFrequency;
             uniform float scala;
-            uniform int colorMap;
-
-            vec3 decibelToColor(float value) {
-                return vec3(1.0 - value, 1.0 - value, 1.0 - value);
-            }
+            uniform float colorMap;
 
             float logScale(float percentage) {
                 float logRange = log2(upperFrequency) - log2(lowerFrequency);
-	            return exp2(percentage * logRange + log2(lowerFrequency));
+                return exp2(percentage * logRange + log2(lowerFrequency));
             }
 
             void main() {
-                float x = 1.0 - (1.0 - texCoord.x) / speed + offset;
+                float x = (texCoord.x - 1.0) / speed + offset;
                 float frequency = logScale(texCoord.y);
                 vec2 scaledCoord = vec2(x, frequency / nyquistFrequency);
                 float value = texture2D(audioData, scaledCoord).r;
 
-                vec3 color = decibelToColor(value);
+                vec2 colorCoord = vec2(value, colorMap);
+                vec3 color = texture2D(colorMapTexture, colorCoord).rgb;
+
                 gl_FragColor = vec4(color, 1.0);
             }
         `
@@ -169,33 +234,16 @@ export class SpectrogramRenderer {
 		return shader
 	}
 
-	private createVertexBuffer(gl: WebGLRenderingContext) {
-		const vertices = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1])
-
-		const buffer = gl.createBuffer()
-		if (!buffer) {
-			throw new Error('Failed to create vertex buffer')
+	private getUniformLocation(
+		gl: WebGLRenderingContext,
+		program: WebGLProgram,
+		name: string,
+	): WebGLUniformLocation {
+		const location = gl.getUniformLocation(program, name)
+		if (!location) {
+			console.warn(`Could not get uniform location for: ${name}`)
 		}
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-		gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
-
-		return buffer
-	}
-
-	private createDataTexture(gl: WebGLRenderingContext) {
-		const texture = gl.createTexture()
-		if (!texture) {
-			throw new Error('Failed to create texture')
-		}
-		this.gl.bindTexture(this.gl.TEXTURE_2D, texture)
-		this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1)
-
-		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT)
-		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE)
-		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR)
-		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR)
-		return texture
+		return location!
 	}
 
 	update(freqBuffer: Uint8Array) {
@@ -214,7 +262,7 @@ export class SpectrogramRenderer {
 			freqBuffer,
 		)
 
-		this.timeIndex = (this.timeIndex + 1) % this.width
+		this.timeIndex = (this.timeIndex + 1) % SPECTROGRAM_WIDTH
 	}
 
 	changeSettings(width: number, height: number, frequencyBinCount: number) {
@@ -223,14 +271,14 @@ export class SpectrogramRenderer {
 			this.canvas.height = height
 		}
 
-		if (width !== this.width || frequencyBinCount != this.frequencyBinCount) {
+		if (frequencyBinCount !== this.frequencyBinCount) {
 			this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
-			const emptyData = new Uint8Array(width * frequencyBinCount)
+			const emptyData = new Uint8Array(SPECTROGRAM_WIDTH * frequencyBinCount)
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
 				0,
 				this.gl.LUMINANCE,
-				width,
+				SPECTROGRAM_WIDTH,
 				frequencyBinCount,
 				0,
 				this.gl.LUMINANCE,
@@ -238,7 +286,6 @@ export class SpectrogramRenderer {
 				emptyData,
 			)
 			this.timeIndex = 0
-			console.log(`Changed size to ${width} x ${frequencyBinCount}`)
 		}
 
 		this.width = width
@@ -259,14 +306,26 @@ export class SpectrogramRenderer {
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer)
 		this.gl.vertexAttribPointer(positionLocation, 2, this.gl.FLOAT, false, 0, 0)
 
-		// Set uniform values
-		this.gl.uniform1f(this.uniformLocations.offset, this.timeIndex / this.width)
+		// Bind textures
+		this.gl.activeTexture(this.gl.TEXTURE0)
+		this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
+		this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'audioData'), 0)
+
+		this.gl.activeTexture(this.gl.TEXTURE1)
+		this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTexture)
+		this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'colorMapTexture'), 1)
+
+		// Set other uniform values
+		this.gl.uniform1f(this.uniformLocations.offset, this.timeIndex / SPECTROGRAM_WIDTH)
 		this.gl.uniform1f(this.uniformLocations.lowerFrequency, settings.lowerFrequency)
 		this.gl.uniform1f(this.uniformLocations.upperFrequency, settings.upperFrequency)
 		this.gl.uniform1f(this.uniformLocations.nyquistFrequency, this.audioManager.getSampleRate() / 2)
 		this.gl.uniform1f(this.uniformLocations.speed, settings.speed)
 		this.gl.uniform1f(this.uniformLocations.scala, 0)
-		this.gl.uniform1i(this.uniformLocations.colorMap, 0)
+		this.gl.uniform1f(
+			this.uniformLocations.colorMap,
+			(COLOR_MAPS.indexOf(settings.colorMap) + 0.5) / COLOR_MAPS.length,
+		)
 
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4)
 	}
@@ -279,5 +338,6 @@ export class SpectrogramRenderer {
 		this.gl.deleteProgram(this.program)
 		this.gl.deleteBuffer(this.vertexBuffer)
 		this.gl.deleteTexture(this.dataTexture)
+		this.gl.deleteTexture(this.colorMapTexture)
 	}
 }

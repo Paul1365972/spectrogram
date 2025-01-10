@@ -60,6 +60,7 @@
 				const history = 20
 				const frequencies = estimatorManager
 					.getResults()
+					.slice(0, history * 5)
 					.map((item) => item.pitchyFrequency)
 					.filter((item) => item > 20)
 				if (frequencies.length >= history) {
@@ -100,5 +101,6 @@
 	canvas {
 		width: 100%;
 		height: 100%;
+		aspect-ratio: unset;
 	}
 </style>

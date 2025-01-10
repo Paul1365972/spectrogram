@@ -1,5 +1,5 @@
 import type { AudioManager } from './audio'
-import type { SpectrogramSettings } from './types'
+import type { SpectrogramSettings } from './settings'
 
 export function refinePeak(array: ArrayLike<number>, index: number): [number, number] {
 	const a = array[Math.max(0, index - 1)]

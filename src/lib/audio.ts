@@ -1,4 +1,4 @@
-import type { SpectrogramSettings } from './types'
+import type { SpectrogramSettings } from './settings'
 
 export class AudioManager {
 	private audioContext: AudioContext | null = null

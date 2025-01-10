@@ -1,4 +1,4 @@
-import type { ScalaVariant } from './types'
+import type { ScalaVariant } from './settings'
 
 const NOTE_NAMES = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#']
 const notes = []

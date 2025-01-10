@@ -1,5 +1,5 @@
 import { SpectrogramRenderer } from './spectrogram_renderer'
-import type { SpectrogramSettings } from './types'
+import type { SpectrogramSettings } from './settings'
 import { AudioManager } from './audio'
 import { getTextColor } from './color_maps'
 import { inverseLogScale, scale, NOTES } from './utils'
@@ -17,13 +17,13 @@ export class Renderer {
 	) {
 		this.webglSpectrogram = new SpectrogramRenderer(audioManager)
 
-		this.width = window.innerWidth
-		this.height = window.innerHeight
+		this.width = canvas.width
+		this.height = canvas.height
 		this.handleResize()
 	}
 
 	handleResize() {
-		if (this.canvas.width !== this.width || this.canvas.height !== this.height) {
+		if (this.width !== window.innerHeight || this.height !== window.innerHeight) {
 			this.width = window.innerWidth
 			this.height = window.innerHeight
 			this.canvas.width = this.width

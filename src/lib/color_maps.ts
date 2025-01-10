@@ -1,25 +1,42 @@
-import type { ColorMap } from './types'
+import type { ColorMap } from './settings'
 
 export function decibelToColor(decibelValue: number, colorMap: ColorMap): [number, number, number] {
 	const gamma = 1.2
 	const percentage = Math.max(0, Math.min(1, decibelValue / 255.0))
 	const value = Math.pow(percentage, gamma)
-
-	if (colorMap === 'grayscale') {
-		const v = (1.0 - value) * 255
-		return [v, v, v]
-	} else if (colorMap === 'magma') {
-		const index = Math.round(value * 255)
-		return MAGMA_COLORMAP[index]
-	} else if (colorMap === 'inferno') {
-		const index = Math.round(value * 255)
-		return INFERNO_COLORMAP[index]
-	}
-	return [0, 0, 0]
+	const array = getColorMap(colorMap)
+	const index = Math.round(value * 255)
+	return array[index]
 }
 
 export function getTextColor(colorMap: ColorMap): [number, number, number] {
-	return colorMap === 'grayscale' ? [0, 0, 0] : [255, 255, 255]
+	switch (colorMap) {
+		case 'grayscale':
+			return [0, 0, 0]
+		case 'inferno':
+			return [255, 255, 255]
+		case 'magma':
+			return [255, 255, 255]
+	}
+}
+
+export function getColorMap(colorMap: ColorMap): [number, number, number][] {
+	switch (colorMap) {
+		case 'grayscale':
+			return GRAYSCALE_COLORMAP
+		case 'inferno':
+			return INFERNO_COLORMAP
+		case 'magma':
+			return MAGMA_COLORMAP
+	}
+}
+
+export const COLOR_MAPS: ColorMap[] = ['grayscale', 'inferno', 'magma']
+
+export const GRAYSCALE_COLORMAP: [number, number, number][] = []
+
+for (let i = 0; i < 256; i++) {
+	GRAYSCALE_COLORMAP.push([255 - i, 255 - i, 255 - i])
 }
 
 export const INFERNO_COLORMAP: [number, number, number][] = [

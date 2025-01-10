@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getDefaultSettings } from '../lib/settings'
 	import { settings } from '../lib/store'
 	import DualSlider from './DualSlider.svelte'
 </script>
@@ -47,6 +48,7 @@
 			<option value={8192}>8192 Points</option>
 			<option value={16384}>16384 Points</option>
 		</select>
+		<span>(~{(($settings.fftSize / 48000) * 1000).toFixed(1)} ms delay)</span>
 	</div>
 
 	<div class="setting">
@@ -88,7 +90,7 @@
 
 	<div class="setting">
 		<label for="speed">Speed</label>
-		<input type="range" id="speed" min="0" max="10" step="1" bind:value={$settings.speed} />
+		<input type="range" id="speed" min="1" max="10" step="0.1" bind:value={$settings.speed} />
 		<span>{$settings.speed} px/f</span>
 	</div>
 
@@ -101,6 +103,10 @@
 	<div class="setting">
 		<label for="follow-pitch">Follow Pitch</label>
 		<input id="follow-pitch" type="checkbox" bind:checked={$settings.followPitch} />
+	</div>
+
+	<div class="setting">
+		<button on:click={() => ($settings = getDefaultSettings())}>Reset</button>
 	</div>
 </div>
 
@@ -127,9 +133,8 @@
 		width: 6em;
 	}
 	span {
-		margin: auto;
-		flex-shrink: 0;
-		width: 4.5em;
+		margin-right: 5px;
+		margin-left: auto;
 		text-align: right;
 	}
 </style>
