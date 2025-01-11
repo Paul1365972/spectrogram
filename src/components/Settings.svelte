@@ -28,8 +28,6 @@
 		<select id="interpolation" bind:value={$settings.interpolation}>
 			<option value="nearest">Nearest</option>
 			<option value="linear">Linear</option>
-			<option value="maximum">Maximum</option>
-			<option value="averaging">Averaging</option>
 		</select>
 	</div>
 

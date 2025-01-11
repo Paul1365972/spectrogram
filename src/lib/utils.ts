@@ -13,14 +13,14 @@ export const NOTES = notes
 
 export function logScale(x: number, a: number, b: number) {
 	x = Math.max(0, Math.min(1, x))
-	const logRange = Math.log2(b) - Math.log2(a)
-	return Math.pow(2, x * logRange + Math.log2(a))
+	const logRange = Math.log(b) - Math.log(a)
+	return Math.exp(x * logRange + Math.log(a))
 }
 
 export function inverseLogScale(y: number, a: number, b: number) {
 	y = Math.max(a, Math.min(b, y))
-	const logRange = Math.log2(b) - Math.log2(a)
-	return (Math.log2(y) - Math.log2(a)) / logRange
+	const logRange = Math.log(b) - Math.log(a)
+	return (Math.log(y) - Math.log(a)) / logRange
 }
 
 export function scale(

@@ -34,5 +34,5 @@ export function getDefaultSettings() {
 
 export type TickVariant = 'none' | 'preset' | 'notes'
 export type ColorMap = 'grayscale' | 'magma' | 'inferno'
-export type Interpolation = 'nearest' | 'linear' | 'maximum' | 'averaging'
+export type Interpolation = 'nearest' | 'linear'
 export type ScalaVariant = 'log' | 'linear' | 'mel'

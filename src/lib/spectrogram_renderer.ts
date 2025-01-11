@@ -104,8 +104,6 @@ export class SpectrogramRenderer {
 
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		return texture
 	}
 
@@ -175,8 +173,8 @@ export class SpectrogramRenderer {
             uniform float colorMap;
 
             float logScale(float percentage) {
-                float logRange = log2(upperFrequency) - log2(lowerFrequency);
-                return exp2(percentage * logRange + log2(lowerFrequency));
+                float logRange = log(upperFrequency) - log(lowerFrequency);
+                return exp(percentage * logRange + log(lowerFrequency));
             }
 
             void main() {
@@ -310,6 +308,9 @@ export class SpectrogramRenderer {
 		this.gl.activeTexture(this.gl.TEXTURE0)
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
 		this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'audioData'), 0)
+		const textureInterpolation = settings.interpolation === "nearest" ? this.gl.NEAREST : this.gl.LINEAR
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, textureInterpolation)
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, textureInterpolation)
 
 		this.gl.activeTexture(this.gl.TEXTURE1)
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTexture)
