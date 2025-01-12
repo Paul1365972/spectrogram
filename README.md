@@ -88,7 +88,6 @@ bun dev
 ## Building
 
 To create a production build:
-
 ```bash
 bun run build
 ```
@@ -96,7 +95,6 @@ bun run build
 The built files will be in the `./dist/` directory.
 
 You can also preview the production build using:
-
 ```bash
 bun preview
 ```

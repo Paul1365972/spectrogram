@@ -8,7 +8,7 @@
 		"build": "vite build",
 		"preview": "vite preview --open",
 		"check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-		"format": "prettier --write 'src/**/*.{ts,svelte,css}' 'public/**/*.{json}' '*.{json,js,ts}' 'index.html'"
+		"format": "prettier --write 'src/**/*.{ts,svelte,css}' 'public/**/*.webmanifest' '*.{json,js,ts,html}'"
 	},
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^5.0.3",
@@ -21,8 +21,6 @@
 		"vite": "^6.0.5"
 	},
 	"dependencies": {
-		"@tensorflow/tfjs": "^4.22.0",
-		"@tensorflow/tfjs-backend-webgl": "^4.22.0",
 		"pitchy": "^4.1.0",
 		"svelte-persisted-store": "^0.12.0"
 	}
