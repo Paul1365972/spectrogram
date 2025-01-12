@@ -6,7 +6,7 @@
 
 <div class="settings-menu">
 	<div class="setting">
-		<label for="tick-variant">Ticks</label>
+		<label for="tick-variant"><u>T</u>icks</label>
 		<select id="tick-variant" bind:value={$settings.tickVariant}>
 			<option value="none">None</option>
 			<option value="preset">Preset</option>
@@ -15,7 +15,7 @@
 	</div>
 
 	<div class="setting">
-		<label for="colormap">Colormap</label>
+		<label for="colormap"><u>C</u>olormap</label>
 		<select id="colormap" bind:value={$settings.colorMap}>
 			<option value="grayscale">Grayscale</option>
 			<option value="magma">Magma</option>
@@ -32,7 +32,7 @@
 	</div>
 
 	<div class="setting">
-		<label for="note-guidelines">Note Guidelines</label>
+		<label for="note-guidelines">Note <u>G</u>uidelines</label>
 		<input id="note-guidelines" type="checkbox" bind:checked={$settings.noteGuidelines} />
 	</div>
 
@@ -99,7 +99,7 @@
 	</div>
 
 	<div class="setting">
-		<label for="follow-pitch">Follow Pitch</label>
+		<label for="follow-pitch"><u>F</u>ollow Pitch</label>
 		<input id="follow-pitch" type="checkbox" bind:checked={$settings.followPitch} />
 	</div>
 

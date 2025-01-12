@@ -52,16 +52,19 @@
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.code === 'Space') {
-			event.preventDefault()
 			paused = !paused
 		} else if (event.code === 'KeyF') {
 			$settingsStore.followPitch = !$settingsStore.followPitch
 		} else if (event.code === 'KeyG') {
 			$settingsStore.noteGuidelines = !$settingsStore.noteGuidelines
 		} else if (event.code === 'KeyT') {
-			$settingsStore.tickVariant = TICK_VARIANTS[(TICK_VARIANTS.indexOf($settingsStore.tickVariant) + 1) % TICK_VARIANTS.length]
+			$settingsStore.tickVariant =
+				TICK_VARIANTS[
+					(TICK_VARIANTS.indexOf($settingsStore.tickVariant) + 1) % TICK_VARIANTS.length
+				]
 		} else if (event.code === 'KeyC') {
-			$settingsStore.colorMap = COLOR_MAPS[(COLOR_MAPS.indexOf($settingsStore.colorMap) + 1) % COLOR_MAPS.length]
+			$settingsStore.colorMap =
+				COLOR_MAPS[(COLOR_MAPS.indexOf($settingsStore.colorMap) + 1) % COLOR_MAPS.length]
 		}
 	}
 
@@ -79,10 +82,19 @@
 				if (frequency) {
 					const currentMiddle = settings.lowerFrequency * Math.SQRT2
 					const currentSpread = settings.upperFrequency / settings.lowerFrequency / 2
-					if (Math.abs(currentMiddle / frequency - 1) > 0.12 || currentSpread >= 1.1 || currentSpread <= 0.9 || momentum >= 0.01) {
-						$settingsStore.lowerFrequency = settings.lowerFrequency * 0.9 + frequency / Math.SQRT2 * 0.1
-						$settingsStore.upperFrequency = settings.upperFrequency * 0.9 + frequency * Math.SQRT2 * 0.1
-						momentum = momentum * 0.9 + Math.abs(((settings.lowerFrequency * Math.SQRT2 / frequency) - 1)) * 0.1
+					if (
+						Math.abs(currentMiddle / frequency - 1) > 0.12 ||
+						currentSpread >= 1.1 ||
+						currentSpread <= 0.9 ||
+						momentum >= 0.01
+					) {
+						$settingsStore.lowerFrequency =
+							settings.lowerFrequency * 0.9 + (frequency / Math.SQRT2) * 0.1
+						$settingsStore.upperFrequency =
+							settings.upperFrequency * 0.9 + frequency * Math.SQRT2 * 0.1
+						momentum =
+							momentum * 0.9 +
+							Math.abs((settings.lowerFrequency * Math.SQRT2) / frequency - 1) * 0.1
 					}
 				}
 			}
