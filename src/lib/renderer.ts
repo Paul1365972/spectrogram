@@ -166,7 +166,7 @@ export class Renderer {
 		const y = 10
 
 		// Draw background
-		ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+		ctx.fillStyle = 'rgba(96, 96, 96, 0.7)'
 		ctx.beginPath()
 		ctx.roundRect(x, y, boxWidth, boxHeight, 5)
 		ctx.fill()

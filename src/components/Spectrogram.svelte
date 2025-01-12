@@ -7,6 +7,8 @@
 	import { settings as settingsStore } from '../lib/store'
 	import { EstimatorManager } from '../lib/estimator'
 	import { trackPitch } from '../lib/pitch_tracker'
+	import { TICK_VARIANTS } from '../lib/settings'
+	import { COLOR_MAPS } from '../lib/color_maps'
 
 	let canvas: HTMLCanvasElement
 
@@ -20,6 +22,8 @@
 
 	let toneEnabled: boolean = false
 	let mousePosition: [number, number] = [0, 0]
+
+	let momentum: number = 0
 
 	onMount(() => {
 		audioManager = new AudioManager()
@@ -50,6 +54,14 @@
 		if (event.code === 'Space') {
 			event.preventDefault()
 			paused = !paused
+		} else if (event.code === 'KeyF') {
+			$settingsStore.followPitch = !$settingsStore.followPitch
+		} else if (event.code === 'KeyG') {
+			$settingsStore.noteGuidelines = !$settingsStore.noteGuidelines
+		} else if (event.code === 'KeyT') {
+			$settingsStore.tickVariant = TICK_VARIANTS[(TICK_VARIANTS.indexOf($settingsStore.tickVariant) + 1) % TICK_VARIANTS.length]
+		} else if (event.code === 'KeyC') {
+			$settingsStore.colorMap = COLOR_MAPS[(COLOR_MAPS.indexOf($settingsStore.colorMap) + 1) % COLOR_MAPS.length]
 		}
 	}
 
@@ -65,8 +77,13 @@
 					.map((item) => (item.isPitchyValid() ? item.pitchyFrequency : null))
 				const frequency = trackPitch(pitches)
 				if (frequency) {
-					$settingsStore.lowerFrequency = settings.lowerFrequency * 0.9 + (frequency / 1.25) * 0.1
-					$settingsStore.upperFrequency = settings.upperFrequency * 0.9 + frequency * 1.25 * 0.1
+					const currentMiddle = settings.lowerFrequency * Math.SQRT2
+					const currentSpread = settings.upperFrequency / settings.lowerFrequency / 2
+					if (Math.abs(currentMiddle / frequency - 1) > 0.12 || currentSpread >= 1.1 || currentSpread <= 0.9 || momentum >= 0.01) {
+						$settingsStore.lowerFrequency = settings.lowerFrequency * 0.9 + frequency / Math.SQRT2 * 0.1
+						$settingsStore.upperFrequency = settings.upperFrequency * 0.9 + frequency * Math.SQRT2 * 0.1
+						momentum = momentum * 0.9 + Math.abs(((settings.lowerFrequency * Math.SQRT2 / frequency) - 1)) * 0.1
+					}
 				}
 			}
 		}

@@ -295,7 +295,6 @@ export class SpectrogramRenderer {
 		if (frequencyBinCount !== this.frequencyBinCount) {
 			this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
 			const emptyData = new Uint8Array(SPECTROGRAM_WIDTH * frequencyBinCount)
-			emptyData.fill(127)
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
 				0,

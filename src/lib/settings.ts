@@ -36,4 +36,5 @@ export function getDefaultSettings() {
 }
 
 export type TickVariant = 'none' | 'preset' | 'notes'
+export const TICK_VARIANTS: TickVariant[] = ['none', 'preset', 'notes']
 export type Interpolation = 'nearest' | 'linear'
