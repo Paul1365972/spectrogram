@@ -1,5 +1,3 @@
-import type { ColorMap } from './settings'
-
 export function decibelToColor(decibelValue: number, colorMap: ColorMap): [number, number, number] {
 	const gamma = 1.2
 	const percentage = Math.max(0, Math.min(1, decibelValue / 255.0))
@@ -30,6 +28,8 @@ export function getColorMap(colorMap: ColorMap): [number, number, number][] {
 			return MAGMA_COLORMAP
 	}
 }
+
+export type ColorMap = 'grayscale' | 'magma' | 'inferno'
 
 export const COLOR_MAPS: ColorMap[] = ['grayscale', 'inferno', 'magma']
 

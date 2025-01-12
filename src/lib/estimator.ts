@@ -3,7 +3,7 @@ import type { AudioManager } from './audio'
 import { findFundamentalFrequency, findMaximumFrequencies } from './basic_estimator'
 import type { SpectrogramSettings } from './settings'
 
-const MAX_ESTIMATOR_RESULTS = 2048
+export const MAX_ESTIMATOR_RESULTS = 2048
 
 export class EstimatorManager {
 	private results: EstimatorResult[] = []
@@ -14,7 +14,8 @@ export class EstimatorManager {
 	async initialize() {}
 
 	update(settings: SpectrogramSettings) {
-		const fundamentalFrequency = findFundamentalFrequency(this.audioManager, 8)
+		const { frequency: fundamentalFrequency, confidence: fundamentalConfidence } =
+			findFundamentalFrequency(this.audioManager, 8)
 		const frequencyMaximas = findMaximumFrequencies(this.audioManager, 3, settings)
 
 		const timeBuffer = this.audioManager.getTimeBuffer()
@@ -29,12 +30,15 @@ export class EstimatorManager {
 		if (this.results.length >= MAX_ESTIMATOR_RESULTS) {
 			this.results.pop()
 		}
-		this.results.unshift({
-			fundamentalFrequency,
-			frequencyMaximas,
-			pitchyFrequency,
-			pitchyConfidence,
-		} as EstimatorResult)
+		this.results.unshift(
+			new EstimatorResult(
+				fundamentalFrequency,
+				fundamentalConfidence,
+				frequencyMaximas,
+				pitchyFrequency,
+				pitchyConfidence,
+			),
+		)
 	}
 
 	getResult() {
@@ -46,9 +50,16 @@ export class EstimatorManager {
 	}
 }
 
-export type EstimatorResult = {
-	fundamentalFrequency: number
-	frequencyMaximas: number[]
-	pitchyFrequency: number
-	pitchyConfidence: number
+export class EstimatorResult {
+	constructor(
+		public fundamentalFrequency: number,
+		public fundamentalConfidence: number,
+		public frequencyMaximas: number[],
+		public pitchyFrequency: number,
+		public pitchyConfidence: number,
+	) {}
+
+	isPitchyValid() {
+		return this.pitchyFrequency > 60 && this.pitchyFrequency > 0.1
+	}
 }

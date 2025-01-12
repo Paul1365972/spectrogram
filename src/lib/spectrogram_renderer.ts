@@ -1,8 +1,10 @@
 import type { AudioManager } from './audio'
 import { COLOR_MAPS, getColorMap } from './color_maps'
+import { MAX_ESTIMATOR_RESULTS } from './estimator'
 import type { SpectrogramSettings } from './settings'
+import { SCALA_VARIANTS } from './scales'
 
-const SPECTROGRAM_WIDTH = 2048
+const SPECTROGRAM_WIDTH = MAX_ESTIMATOR_RESULTS
 
 export class SpectrogramRenderer {
 	private readonly gl: WebGL2RenderingContext
@@ -169,7 +171,7 @@ export class SpectrogramRenderer {
             uniform float lowerFrequency;
             uniform float upperFrequency;
             uniform float nyquistFrequency;
-            uniform float scala;
+            uniform int scala;
             uniform float colorMap;
 
             float logScale(float percentage) {
@@ -177,9 +179,30 @@ export class SpectrogramRenderer {
                 return exp(percentage * logRange + log(lowerFrequency));
             }
 
+			float linearScale(float percentage) {
+			    return lowerFrequency + percentage * (upperFrequency - lowerFrequency);
+			}
+
+			float melScale(float percentage) {
+			    float lower = 1127.0 * log(1.0 + lowerFrequency / 700.0);
+			    float upper = 1127.0 * log(1.0 + upperFrequency / 700.0);
+			    float mel = lower + percentage * (upper - lower);
+			    return 700.0 * (exp(mel / 1127.0) - 1.0);
+			}
+
+			float scaleFrequency(float percentage) {
+			    if (scala == 1) {
+			        return linearScale(percentage);
+			    } else if (scala == 2) {
+			        return melScale(percentage);
+			    } else {
+			        return logScale(percentage);
+			    }
+			}
+
             void main() {
                 float x = (texCoord.x - 1.0) / speed + offset;
-                float frequency = logScale(texCoord.y);
+                float frequency = scaleFrequency(texCoord.y);
                 vec2 scaledCoord = vec2(x, frequency / nyquistFrequency);
                 float value = texture2D(audioData, scaledCoord).r;
 
@@ -272,6 +295,7 @@ export class SpectrogramRenderer {
 		if (frequencyBinCount !== this.frequencyBinCount) {
 			this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
 			const emptyData = new Uint8Array(SPECTROGRAM_WIDTH * frequencyBinCount)
+			emptyData.fill(127)
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
 				0,
@@ -308,7 +332,8 @@ export class SpectrogramRenderer {
 		this.gl.activeTexture(this.gl.TEXTURE0)
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
 		this.gl.uniform1i(this.gl.getUniformLocation(this.program, 'audioData'), 0)
-		const textureInterpolation = settings.interpolation === "nearest" ? this.gl.NEAREST : this.gl.LINEAR
+		const textureInterpolation =
+			settings.interpolation === 'nearest' ? this.gl.NEAREST : this.gl.LINEAR
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, textureInterpolation)
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, textureInterpolation)
 
@@ -322,7 +347,7 @@ export class SpectrogramRenderer {
 		this.gl.uniform1f(this.uniformLocations.upperFrequency, settings.upperFrequency)
 		this.gl.uniform1f(this.uniformLocations.nyquistFrequency, this.audioManager.getSampleRate() / 2)
 		this.gl.uniform1f(this.uniformLocations.speed, settings.speed)
-		this.gl.uniform1f(this.uniformLocations.scala, 0)
+		this.gl.uniform1i(this.uniformLocations.scala, SCALA_VARIANTS.indexOf(settings.scala))
 		this.gl.uniform1f(
 			this.uniformLocations.colorMap,
 			(COLOR_MAPS.indexOf(settings.colorMap) + 0.5) / COLOR_MAPS.length,

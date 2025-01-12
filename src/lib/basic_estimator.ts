@@ -1,7 +1,7 @@
 import type { AudioManager } from './audio'
 import type { SpectrogramSettings } from './settings'
 
-export function refinePeak(array: ArrayLike<number>, index: number): [number, number] {
+export function refinePeak(array: ArrayLike<number>, index: number) {
 	const a = array[Math.max(0, index - 1)]
 	const b = array[index]
 	const c = array[Math.min(array.length - 1, index + 1)]
@@ -44,7 +44,7 @@ export function findMaximumFrequencies(
 	return maximas
 }
 
-export function findFundamentalFrequency(audioManager: AudioManager, partials: number): number {
+export function findFundamentalFrequency(audioManager: AudioManager, partials: number) {
 	const freqBuffer = audioManager.getFreqBuffer()
 	const buf = new Float32Array(freqBuffer.length)
 	const lowerCutoff = Math.floor(audioManager.freqToIndex(50.0) * partials)
@@ -56,7 +56,7 @@ export function findFundamentalFrequency(audioManager: AudioManager, partials: n
 		for (let j = 1; j <= partials; j++) {
 			const index = Math.floor((j * i) / partials)
 			const value = freqBuffer[index] || 0
-			product *= 0.1 + (0.9 * value) / 255.0
+			product *= 0.1 + (0.9 * value) / 255
 			const decibel = audioManager.valueToDecibel(value)
 			sum += decibel / partials
 		}
@@ -65,11 +65,17 @@ export function findFundamentalFrequency(audioManager: AudioManager, partials: n
 
 	let maxIndex = 0
 	for (let i = 0; i < buf.length; i++) {
-		if (buf[maxIndex] < buf[i]) {
+		if (buf[i] > buf[maxIndex]) {
 			maxIndex = i
 		}
 	}
 
-	const freq = audioManager.indexToFreq(maxIndex / partials)
-	return freq
+	const frequency = audioManager.indexToFreq(maxIndex / partials)
+	const max = Math.max(...freqBuffer.slice(lowerCutoff, upperCutoff))
+	const theoreticalMax = Math.pow(0.1 + (0.9 * max) / 255, partials)
+	const confidence = Math.max(
+		0.0,
+		Math.min(1.0, ((1.0 - Math.log(buf[maxIndex] / theoreticalMax) / 10) * max) / 255),
+	)
+	return { frequency, confidence }
 }

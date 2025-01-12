@@ -1,3 +1,6 @@
+import type { ColorMap } from './color_maps'
+import type { ScalaVariant } from './scales'
+
 export type SpectrogramSettings = {
 	tickVariant: TickVariant
 	colorMap: ColorMap
@@ -33,6 +36,4 @@ export function getDefaultSettings() {
 }
 
 export type TickVariant = 'none' | 'preset' | 'notes'
-export type ColorMap = 'grayscale' | 'magma' | 'inferno'
 export type Interpolation = 'nearest' | 'linear'
-export type ScalaVariant = 'log' | 'linear' | 'mel'

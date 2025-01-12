@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { logScale, inverseLogScale } from '../lib/utils'
+	import { logScale, inverseLogScale } from '../lib/scales'
+	import { getDefaultSettings } from '../lib/settings'
 	import { settings } from '../lib/store'
 
 	let { id } = $props()
@@ -38,9 +39,26 @@
 		window.addEventListener('mousemove', onMove)
 		window.addEventListener('mouseup', onUp)
 	}
+
+	function handleDoubleClick(event: MouseEvent, lower: boolean, upper: boolean) {
+		event.stopPropagation()
+		const defaultSettings = getDefaultSettings()
+		if (lower && defaultSettings.lowerFrequency < $settings.upperFrequency) {
+			$settings.lowerFrequency = defaultSettings.lowerFrequency
+		}
+		if (upper && defaultSettings.upperFrequency > $settings.lowerFrequency) {
+			$settings.upperFrequency = defaultSettings.upperFrequency
+		}
+	}
 </script>
 
-<div {id} class="slider-container">
+<div
+	{id}
+	class="slider-container"
+	role="button"
+	tabindex="0"
+	ondblclick={(e) => handleDoubleClick(e, true, true)}
+>
 	<div class="track">
 		<div
 			class="track-fill"
@@ -51,6 +69,7 @@
 		class="handle handle-lower"
 		style="left: {lowerPercentage * 100}%"
 		onmousedown={(e) => handleDrag(e, true)}
+		ondblclick={(e) => handleDoubleClick(e, true, false)}
 	>
 		<span class="freq-label">{Math.round($settings.lowerFrequency)} Hz</span>
 	</button>
@@ -58,6 +77,7 @@
 		class="handle handle-upper"
 		style="left: {upperPercentage * 100}%"
 		onmousedown={(e) => handleDrag(e, false)}
+		ondblclick={(e) => handleDoubleClick(e, false, true)}
 	>
 		<span class="freq-label">{Math.round($settings.upperFrequency)} Hz</span>
 	</button>
@@ -71,7 +91,7 @@
 		display: flex;
 		align-items: center;
 		margin-right: 25px;
-		margin-bottom: 25px;
+		margin-bottom: 10px;
 	}
 
 	.track {
