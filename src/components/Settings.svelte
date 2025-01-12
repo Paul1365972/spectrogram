@@ -18,8 +18,8 @@
 		<label for="colormap"><u>C</u>olormap</label>
 		<select id="colormap" bind:value={$settings.colorMap}>
 			<option value="grayscale">Grayscale</option>
-			<option value="magma">Magma</option>
 			<option value="inferno">Inferno</option>
+			<option value="magma">Magma</option>
 		</select>
 	</div>
 

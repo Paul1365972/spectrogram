@@ -1,12 +1,13 @@
 import type { AudioManager } from './audio'
 import type { SpectrogramSettings } from './settings'
 
+// Parabolic interpolation
 export function refinePeak(array: ArrayLike<number>, index: number) {
 	const a = array[Math.max(0, index - 1)]
 	const b = array[index]
 	const c = array[Math.min(array.length - 1, index + 1)]
 	const p = (0.5 * (a - c)) / (a - 2.0 * b + c)
-	return [index + p, b - 0.25 * (a - c) * p]
+	return { index: index + p, value: b - 0.25 * (a - c) * p }
 }
 
 // Greedily try to find the maximas
@@ -36,7 +37,7 @@ export function findMaximumFrequencies(
 
 	const maximas = []
 	for (const point of selectedPoints) {
-		const [index, _] = refinePeak(freqBuffer, point)
+		const { index } = refinePeak(freqBuffer, point)
 		const frequency = audioManager.indexToFreq(index)
 		maximas.push(frequency)
 	}
@@ -44,6 +45,7 @@ export function findMaximumFrequencies(
 	return maximas
 }
 
+// Find Fundamental Frequency via Harmonic Product Spectrum
 export function findFundamentalFrequency(audioManager: AudioManager, partials: number) {
 	const freqBuffer = audioManager.getFreqBuffer()
 	const buf = new Float32Array(freqBuffer.length)

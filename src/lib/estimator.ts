@@ -1,6 +1,6 @@
 import { PitchDetector } from 'pitchy'
 import type { AudioManager } from './audio'
-import { findFundamentalFrequency, findMaximumFrequencies } from './basic_estimator'
+import { findFundamentalFrequency, findMaximumFrequencies } from './custom_estimator'
 import type { SpectrogramSettings } from './settings'
 
 export const MAX_ESTIMATOR_RESULTS = 2048
