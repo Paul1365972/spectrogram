@@ -12,6 +12,7 @@ Inspired by [Friture: A real-time audio analyzer](https://friture.org/) and [Pra
 ## Features
 
 - **Real-time Audio Analysis**: Standard FFT-based frequency analysis
+
 - **Multiple Visualization Modes**:
   - Linear, Logarithmic, and Mel frequency scales
   - Customizable frequency range (20Hz - 20kHz)
@@ -29,6 +30,8 @@ Inspired by [Friture: A real-time audio analyzer](https://friture.org/) and [Pra
   - Customizable tick markers
   - Adjustable scroll speed
   - Multiple interpolation modes
+
+- **Mobile Friendly**
 
 
 ## Usage

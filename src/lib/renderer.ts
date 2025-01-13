@@ -162,7 +162,7 @@ export class Renderer {
 		// Constants for the feedback box
 		const boxWidth = 200
 		const boxHeight = 120
-		const x = this.width - 60 - boxWidth
+		const x = this.width - 100 - boxWidth
 		const y = 10
 
 		// Draw background

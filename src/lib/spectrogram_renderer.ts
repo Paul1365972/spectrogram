@@ -162,7 +162,7 @@ export class SpectrogramRenderer {
         `
 
 		const fragmentShaderSource = `
-            precision mediump float;
+            precision highp float;
             varying vec2 texCoord;
             uniform sampler2D audioData;
             uniform sampler2D colorMapTexture;

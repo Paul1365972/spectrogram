@@ -12,14 +12,17 @@
 	let lowerPercentage = $derived(inverseLogScale($settings.lowerFrequency, MIN_FREQ, MAX_FREQ))
 	let upperPercentage = $derived(inverseLogScale($settings.upperFrequency, MIN_FREQ, MAX_FREQ))
 
-	function handleDrag(event: MouseEvent, isLower: boolean) {
+	function handleStart(event: MouseEvent | TouchEvent, isLower: boolean) {
+		event.preventDefault()
 		const slider = event.currentTarget as HTMLElement
 		const rect = slider.parentElement!.getBoundingClientRect()
-		const startX = event.clientX
+		const startX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX
 		const startPos = isLower ? lowerPercentage : upperPercentage
 
-		function onMove(moveEvent: MouseEvent) {
-			const delta = (moveEvent.clientX - startX) / rect.width
+		function onMove(moveEvent: MouseEvent | TouchEvent) {
+			const currentX =
+				moveEvent instanceof MouseEvent ? moveEvent.clientX : moveEvent.touches[0].clientX
+			const delta = (currentX - startX) / rect.width
 			let newPercentage = Math.max(0, Math.min(1, startPos + delta))
 
 			if (isLower) {
@@ -31,16 +34,20 @@
 			}
 		}
 
-		function onUp() {
+		function onEnd() {
 			window.removeEventListener('mousemove', onMove)
-			window.removeEventListener('mouseup', onUp)
+			window.removeEventListener('mouseup', onEnd)
+			window.removeEventListener('touchmove', onMove)
+			window.removeEventListener('touchend', onEnd)
 		}
 
 		window.addEventListener('mousemove', onMove)
-		window.addEventListener('mouseup', onUp)
+		window.addEventListener('mouseup', onEnd)
+		window.addEventListener('touchmove', onMove)
+		window.addEventListener('touchend', onEnd)
 	}
 
-	function handleDoubleClick(event: MouseEvent, lower: boolean, upper: boolean) {
+	function handleDoubleClick(event: MouseEvent | TouchEvent, lower: boolean, upper: boolean) {
 		event.stopPropagation()
 		const defaultSettings = getDefaultSettings()
 		if (lower && defaultSettings.lowerFrequency < $settings.upperFrequency) {
@@ -68,7 +75,8 @@
 	<button
 		class="handle handle-lower"
 		style="left: {lowerPercentage * 100}%"
-		onmousedown={(e) => handleDrag(e, true)}
+		onmousedown={(e) => handleStart(e, true)}
+		ontouchstart={(e) => handleStart(e, true)}
 		ondblclick={(e) => handleDoubleClick(e, true, false)}
 	>
 		<span class="freq-label">{Math.round($settings.lowerFrequency)} Hz</span>
@@ -76,7 +84,8 @@
 	<button
 		class="handle handle-upper"
 		style="left: {upperPercentage * 100}%"
-		onmousedown={(e) => handleDrag(e, false)}
+		onmousedown={(e) => handleStart(e, false)}
+		ontouchstart={(e) => handleStart(e, false)}
 		ondblclick={(e) => handleDoubleClick(e, false, true)}
 	>
 		<span class="freq-label">{Math.round($settings.upperFrequency)} Hz</span>
@@ -90,15 +99,16 @@
 		height: 40px;
 		display: flex;
 		align-items: center;
-		margin-right: 25px;
+		margin-right: 20px;
 		margin-bottom: 10px;
+		touch-action: none;
 	}
 
 	.track {
 		position: absolute;
 		width: 100%;
-		height: 4px;
-		background-color: #ddd;
+		height: 5px;
+		background-color: #888;
 		border-radius: 2px;
 	}
 
@@ -119,6 +129,7 @@
 		transform: translateX(-50%);
 		cursor: pointer;
 		z-index: 1;
+		touch-action: none;
 	}
 
 	.handle:hover,

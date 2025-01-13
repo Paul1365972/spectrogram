@@ -42,11 +42,14 @@
 	})
 
 	async function init() {
+		window.removeEventListener('mousedown', init)
+		window.removeEventListener('touchstart', init)
 		if (!initialized) {
 			await audioManager.initialize()
 			await estimatorManager.initialize()
 			initialized = true
 			requestAnimationFrame(render)
+
 		}
 	}
 
@@ -65,6 +68,48 @@
 		} else if (event.code === 'KeyC') {
 			$settingsStore.colorMap =
 				COLOR_MAPS[(COLOR_MAPS.indexOf($settingsStore.colorMap) + 1) % COLOR_MAPS.length]
+		}
+	}
+
+	function updateOscillatorFrequency() {
+		const percentage = 1.0 - mousePosition[1] / window.innerHeight
+		const freq = scale(percentage, settings.scala, settings.lowerFrequency, settings.upperFrequency)
+		audioManager?.setOscillatorFrequency(freq)
+	}
+
+	function handleStart(event: MouseEvent | TouchEvent) {
+		if ((event instanceof MouseEvent && event.button === 0) || event instanceof TouchEvent) {
+			if (event instanceof MouseEvent) {
+				event.preventDefault()
+				mousePosition = [event.clientX, event.clientY]
+			} else if (event instanceof TouchEvent) {
+				const touch = event.touches[0]
+				mousePosition = [touch.clientX, touch.clientY]
+			}
+			toneEnabled = true
+			updateOscillatorFrequency()
+			audioManager?.setGain(settings.volume / 100)
+		}
+	}
+
+	function handleMove(event: MouseEvent | TouchEvent) {
+		if (event instanceof MouseEvent) {
+			event.preventDefault()
+			mousePosition = [event.clientX, event.clientY]
+		} else if (event instanceof TouchEvent) {
+			const touch = event.touches[0]
+			mousePosition = [touch.clientX, touch.clientY]
+		}
+		if (toneEnabled) {
+			updateOscillatorFrequency()
+		}
+	}
+
+	function handleEnd(event: MouseEvent | TouchEvent) {
+		if ((event instanceof MouseEvent && event.button === 0) || event instanceof TouchEvent) {
+			event.preventDefault()
+			toneEnabled = false
+			audioManager?.setGain(0)
 		}
 	}
 
@@ -106,26 +151,13 @@
 
 <canvas
 	bind:this={canvas}
-	onmousemove={(e) => {
-		mousePosition = [e.clientX, e.clientY]
-		const percentage = 1.0 - (1.0 * mousePosition[1]) / window.innerHeight
-		const freq = scale(percentage, settings.scala, settings.lowerFrequency, settings.upperFrequency)
-		audioManager?.setOscillatorFrequency(freq)
-	}}
-	onmousedown={(e) => {
-		if (e.button === 0) {
-			toneEnabled = true
-			audioManager?.setGain(settings.volume / 100)
-			e.preventDefault()
-		}
-	}}
-	onmouseup={(e) => {
-		if (e.button === 0) {
-			toneEnabled = false
-			audioManager?.setGain(0)
-			e.preventDefault()
-		}
-	}}
+	onmousemove={handleMove}
+	onmousedown={handleStart}
+	onmouseup={handleEnd}
+	ontouchstart={handleStart}
+	ontouchmove={handleMove}
+	ontouchend={handleEnd}
+	ontouchcancel={handleEnd}
 >
 </canvas>
 
@@ -134,5 +166,9 @@
 		width: 100%;
 		height: 100%;
 		aspect-ratio: unset;
+		touch-action: none;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
 	}
 </style>

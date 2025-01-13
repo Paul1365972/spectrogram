@@ -8,7 +8,7 @@
 		"build": "vite build",
 		"preview": "vite preview --open",
 		"check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-		"format": "prettier --write 'src/**/*.{ts,svelte,css}' 'public/**/*.webmanifest' '*.{json,js,ts,html}'"
+		"format": "prettier --write 'src/**/*.{ts,svelte,css}' 'public/**/*.json' '*.{json,js,ts,html}'"
 	},
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^5.0.3",
