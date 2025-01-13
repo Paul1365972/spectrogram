@@ -4,7 +4,6 @@ import { AudioManager } from './audio'
 import { getTextColor } from './color_maps'
 import { inverseScale, scale, NOTES, nearestNote } from './scales'
 import { MAX_ESTIMATOR_RESULTS, type EstimatorManager } from './estimator'
-import { trackPitch } from './pitch_tracker'
 
 export class Renderer {
 	private webglSpectrogram: SpectrogramRenderer
@@ -62,12 +61,7 @@ export class Renderer {
 		const [r, g, b] = getTextColor(settings.colorMap)
 		ctx.fillStyle = `rgb(${r},${g},${b})`
 
-		const percentage = inverseScale(
-			frequency,
-			settings.scala,
-			settings.lowerFrequency,
-			settings.upperFrequency,
-		)
+		const percentage = inverseScale(frequency, settings)
 		const y = Math.round((1.0 - percentage) * this.height)
 		ctx.fillRect(x, y - 1, 20, 2)
 		ctx.textAlign = 'right'
@@ -84,10 +78,7 @@ export class Renderer {
 		ctx.fillStyle = color
 
 		ctx.beginPath()
-		const y =
-			(1.0 -
-				inverseScale(frequency, settings.scala, settings.lowerFrequency, settings.upperFrequency)) *
-			this.height
+		const y = this.height - inverseScale(frequency, settings) * this.height
 		ctx.arc(this.width - 5, y, 5, 0, 2 * Math.PI, false)
 		ctx.fill()
 		ctx.lineWidth = 3
@@ -116,24 +107,8 @@ export class Renderer {
 
 			const prevX = this.width - (i - 1) * segmentWidth
 			const currX = this.width - i * segmentWidth
-			const currY =
-				(1.0 -
-					inverseScale(
-						curr.frequency,
-						settings.scala,
-						settings.lowerFrequency,
-						settings.upperFrequency,
-					)) *
-				this.height
-			const prevY =
-				(1.0 -
-					inverseScale(
-						prev.frequency,
-						settings.scala,
-						settings.lowerFrequency,
-						settings.upperFrequency,
-					)) *
-				this.height
+			const currY = (1.0 - inverseScale(curr.frequency, settings)) * this.height
+			const prevY = (1.0 - inverseScale(prev.frequency, settings)) * this.height
 
 			ctx.moveTo(prevX, prevY)
 			ctx.lineTo(currX, currY)
@@ -146,12 +121,7 @@ export class Renderer {
 		ctx.fillStyle = `rgba(${r},${g},${b},0.25)`
 		for (const { frequency } of NOTES) {
 			if (frequency > settings.lowerFrequency && frequency < settings.upperFrequency) {
-				const percentage = inverseScale(
-					frequency,
-					settings.scala,
-					settings.lowerFrequency,
-					settings.upperFrequency,
-				)
+				const percentage = inverseScale(frequency, settings)
 				const y = Math.round((1.0 - percentage) * this.height)
 				ctx.fillRect(0, y - 1, this.width, 2)
 			}
@@ -178,16 +148,16 @@ export class Renderer {
 			let grade: string
 			let gradeColor: string
 			const absCents = Math.abs(cents)
-			if (absCents < 10) {
+			if (absCents < 5) {
 				grade = 'Perfect!'
 				gradeColor = 'rgb(64, 224, 64)'
-			} else if (absCents < 20) {
+			} else if (absCents < 15) {
 				grade = 'Great'
 				gradeColor = 'rgb(150, 224, 64)'
-			} else if (absCents < 30) {
+			} else if (absCents < 25) {
 				grade = 'Good'
 				gradeColor = 'rgb(224, 224, 64)'
-			} else if (absCents < 40) {
+			} else if (absCents < 35) {
 				grade = 'Off'
 				gradeColor = 'rgb(224, 150, 64)'
 			} else {
@@ -246,7 +216,7 @@ export class Renderer {
 		ctx.fillStyle = `rgb(${r},${g},${b})`
 
 		const percentage = 1.0 - (1.0 * mousePosition[1]) / this.height
-		const freq = scale(percentage, settings.scala, settings.lowerFrequency, settings.upperFrequency)
+		const freq = scale(percentage, settings)
 
 		ctx.textAlign = 'left'
 		ctx.fillText(`${freq.toFixed(1)} Hz`, mousePosition[0] + 10, mousePosition[1] - 10)

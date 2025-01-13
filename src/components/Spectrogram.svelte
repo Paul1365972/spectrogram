@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte'
+	import { onMount } from 'svelte'
 	import { get } from 'svelte/store'
 	import { AudioManager } from '../lib/audio'
 	import { Renderer } from '../lib/renderer'
@@ -49,7 +49,6 @@
 			await estimatorManager.initialize()
 			initialized = true
 			requestAnimationFrame(render)
-
 		}
 	}
 
@@ -73,7 +72,7 @@
 
 	function updateOscillatorFrequency() {
 		const percentage = 1.0 - mousePosition[1] / window.innerHeight
-		const freq = scale(percentage, settings.scala, settings.lowerFrequency, settings.upperFrequency)
+		const freq = scale(percentage, settings)
 		audioManager?.setOscillatorFrequency(freq)
 	}
 
