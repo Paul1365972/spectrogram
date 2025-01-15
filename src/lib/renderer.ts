@@ -228,8 +228,8 @@ export class Renderer {
 	render(settings: SpectrogramSettings, mousePosition: [number, number], paused: boolean) {
 		this.handleResize()
 
-		const freqBuffer = this.audioManager.getFreqBuffer()
 		if (!paused) {
+			const freqBuffer = this.audioManager.getNormalizedFreqBuffer()
 			this.webglSpectrogram.update(freqBuffer)
 		}
 		this.webglSpectrogram.render(settings, this.width, this.height)

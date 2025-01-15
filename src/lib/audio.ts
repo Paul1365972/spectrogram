@@ -5,12 +5,10 @@ export class AudioManager {
 	private analyser: AnalyserNode | null = null
 	private gainNode: GainNode | null = null
 	private oscillatorNode: OscillatorNode | null = null
-	private rawFreqBuffer: Uint8Array | null = null
-	private freqBuffer: Uint8Array | null = null
 	private timeBuffer: Float32Array | null = null
+	private freqBuffer: Float32Array | null = null
+	private normalizedFreqBuffer: Float32Array | null = null
 	private sampleRate: number | null = null
-	private decibelsScale: number | null = null
-	private decibelsOffset: number | null = null
 	private hzPerBin: number | null = null
 
 	async initialize() {
@@ -37,9 +35,9 @@ export class AudioManager {
 		this.oscillatorNode.connect(this.gainNode)
 		this.oscillatorNode.start()
 
-		this.freqBuffer = new Uint8Array(this.analyser.frequencyBinCount)
-		this.rawFreqBuffer = new Uint8Array(this.analyser.frequencyBinCount)
 		this.timeBuffer = new Float32Array(this.analyser.fftSize)
+		this.freqBuffer = new Float32Array(this.analyser.frequencyBinCount)
+		this.normalizedFreqBuffer = new Float32Array(this.analyser.frequencyBinCount)
 	}
 
 	setOscillatorFrequency(freq: number) {
@@ -58,8 +56,8 @@ export class AudioManager {
 		return this.freqBuffer!
 	}
 
-	getRawFreqBuffer() {
-		return this.rawFreqBuffer!
+	getNormalizedFreqBuffer() {
+		return this.normalizedFreqBuffer!
 	}
 
 	getTimeBuffer() {
@@ -76,40 +74,31 @@ export class AudioManager {
 		analyser.fftSize = settings.fftSize
 		analyser.smoothingTimeConstant = settings.smoothingFactor
 
-		this.freqBuffer = new Uint8Array(analyser.frequencyBinCount)
-		this.rawFreqBuffer = new Uint8Array(analyser.frequencyBinCount)
 		this.timeBuffer = new Float32Array(analyser.fftSize)
+		this.freqBuffer = new Float32Array(analyser.frequencyBinCount)
+		this.normalizedFreqBuffer = new Float32Array(analyser.frequencyBinCount)
 
 		analyser.getFloatTimeDomainData(this.timeBuffer!)
-		analyser.getByteFrequencyData(this.rawFreqBuffer!)
+		// Does the FFT with a blackman window
+		analyser.getFloatFrequencyData(this.freqBuffer!)
 
 		const factor = parseInt(settings.emphasis)
-		const startFreq = 50
-		for (let i = 0; i < this.rawFreqBuffer!.length; i++) {
-			let value = this.rawFreqBuffer![i]
-			const freq = this.indexToFreq(i)
-			if (freq > startFreq) {
+		if (factor > 0) {
+			const startFreq = 50
+			const startIndex = Math.ceil(this.freqToIndex(startFreq))
+			for (let i = startIndex; i < this.freqBuffer!.length; i++) {
+				const freq = this.indexToFreq(i)
 				const octaveOffset = Math.log2(freq) - Math.log2(startFreq)
-				const db = this.valueToDecibel(this.rawFreqBuffer![i]) + factor * octaveOffset
-				value = Math.min(255, Math.round(this.decibelToValue(db)))
+				this.freqBuffer![i] += factor * octaveOffset
 			}
-			this.freqBuffer![i] = value
+		}
+		for (let i = 0; i < this.freqBuffer!.length; i++) {
+			this.normalizedFreqBuffer![i] += this.decibelToPercentage(this.freqBuffer![i])
 		}
 
 		this.sampleRate = this.audioContext!.sampleRate
-		this.decibelsScale = (analyser.maxDecibels - analyser.minDecibels) / 255.0
-		this.decibelsOffset = analyser.minDecibels
-
 		const nyquist = this.sampleRate / 2.0
 		this.hzPerBin = nyquist / analyser.frequencyBinCount
-	}
-
-	valueToDecibel(value: number): number {
-		return value * this.decibelsScale! + this.decibelsOffset!
-	}
-
-	decibelToValue(db: number): number {
-		return (db - this.decibelsOffset!) / this.decibelsScale!
 	}
 
 	indexToFreq(index: number): number {
@@ -118,5 +107,12 @@ export class AudioManager {
 
 	freqToIndex(frequency: number): number {
 		return frequency / this.hzPerBin!
+	}
+
+	// TODO Replace with configurable range or make it more intelligent
+	private decibelToPercentage(x: number) {
+		const minDecibels = -100
+		const maxDecibels = -30
+		return (x - minDecibels) / (maxDecibels - minDecibels)
 	}
 }

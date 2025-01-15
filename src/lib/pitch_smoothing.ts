@@ -5,7 +5,7 @@ const MIN_VALID_SAMPLES = 5
 const MAX_OCTAVE_JUMP = 1.5
 const EXTREME_OUTLIER_RATIO = 3
 
-export function trackPitch(pitches: (number | null)[]): number | null {
+export function smoothPitches(pitches: (number | null)[]): number | null {
 	// Step 1: Create windowed view of recent samples
 	const window = pitches.slice(0, Math.min(WINDOW_SIZE, pitches.length))
 

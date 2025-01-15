@@ -6,7 +6,7 @@
 	import { scale } from '../lib/scales'
 	import { settings as settingsStore } from '../lib/store'
 	import { EstimatorManager } from '../lib/estimator'
-	import { trackPitch } from '../lib/pitch_tracker'
+	import { smoothPitches } from '../lib/pitch_smoothing'
 	import { TICK_VARIANTS } from '../lib/settings'
 	import { COLOR_MAPS } from '../lib/color_maps'
 
@@ -122,7 +122,7 @@
 					.getResults()
 					.slice(0, 128)
 					.map((item) => (item.isPitchyValid() ? item.pitchyFrequency : null))
-				const frequency = trackPitch(pitches)
+				const frequency = smoothPitches(pitches)
 				if (frequency) {
 					const currentMiddle = settings.lowerFrequency * Math.SQRT2
 					const currentSpread = settings.upperFrequency / settings.lowerFrequency / 2

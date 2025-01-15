@@ -267,7 +267,7 @@ export class SpectrogramRenderer {
 		return location!
 	}
 
-	update(freqBuffer: Uint8Array) {
+	update(freqBuffer: Float32Array) {
 		this.changeSettings(this.width, this.height, freqBuffer.length)
 
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
@@ -278,8 +278,8 @@ export class SpectrogramRenderer {
 			0,
 			1,
 			this.frequencyBinCount,
-			this.gl.LUMINANCE,
-			this.gl.UNSIGNED_BYTE,
+			this.gl.RED,
+			this.gl.FLOAT,
 			freqBuffer,
 		)
 
@@ -294,16 +294,16 @@ export class SpectrogramRenderer {
 
 		if (frequencyBinCount !== this.frequencyBinCount) {
 			this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
-			const emptyData = new Uint8Array(SPECTROGRAM_WIDTH * frequencyBinCount)
+			const emptyData = new Float32Array(SPECTROGRAM_WIDTH * frequencyBinCount)
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
 				0,
-				this.gl.LUMINANCE,
+				this.gl.R32F,
 				SPECTROGRAM_WIDTH,
 				frequencyBinCount,
 				0,
-				this.gl.LUMINANCE,
-				this.gl.UNSIGNED_BYTE,
+				this.gl.RED,
+				this.gl.FLOAT,
 				emptyData,
 			)
 			this.timeIndex = 0

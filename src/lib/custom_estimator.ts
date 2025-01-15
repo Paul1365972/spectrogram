@@ -47,37 +47,37 @@ export function findMaximumFrequencies(
 
 // Find Fundamental Frequency via Harmonic Product Spectrum
 export function findFundamentalFrequency(audioManager: AudioManager, partials: number) {
-	const freqBuffer = audioManager.getFreqBuffer()
-	const buf = new Float32Array(freqBuffer.length)
-	const lowerCutoff = Math.floor(audioManager.freqToIndex(50.0) * partials)
-	const upperCutoff = Math.ceil(audioManager.freqToIndex(600.0) * partials)
+	const freqBuffer = audioManager.getNormalizedFreqBuffer()
+	const lowerCutoff = Math.floor(audioManager.freqToIndex(50.0))
+	const upperCutoff = Math.ceil(audioManager.freqToIndex(600.0))
 
-	for (let i = lowerCutoff; i < upperCutoff; i++) {
-		let sum = 0.0
-		let product = 1.0
-		for (let j = 1; j <= partials; j++) {
-			const index = Math.floor((j * i) / partials)
-			const value = freqBuffer[index] || 0
-			product *= 0.1 + (0.9 * value) / 255
-			const decibel = audioManager.valueToDecibel(value)
-			sum += decibel / partials
+	const buffer = new Float32Array(freqBuffer.length).fill(1)
+
+	for (let i = 1; i <= partials; i++) {
+		const iReciprocal = 1 / i
+		for (let j = lowerCutoff; j < upperCutoff; j++) {
+			let value = 0
+			for (let k = 0; k < i; k++) {
+				value += freqBuffer[j * i + k]
+			}
+			buffer[j] *= 0.1 + 0.9 * value * iReciprocal
 		}
-		buf[i] = product
 	}
 
-	let maxIndex = 0
-	for (let i = 0; i < buf.length; i++) {
-		if (buf[i] > buf[maxIndex]) {
+	let maxIndex = lowerCutoff
+	for (let i = lowerCutoff; i < upperCutoff; i++) {
+		if (buffer[i] > buffer[maxIndex]) {
 			maxIndex = i
 		}
 	}
 
-	const frequency = audioManager.indexToFreq(maxIndex / partials)
+	const frequency = audioManager.indexToFreq(maxIndex)
+	// TODO: The confidence calculation is not optimal
 	const max = Math.max(...freqBuffer.slice(lowerCutoff, upperCutoff))
-	const theoreticalMax = Math.pow(0.1 + (0.9 * max) / 255, partials)
+	const theoreticalMax = Math.pow(0.1 + 0.9 * max, partials)
 	const confidence = Math.max(
 		0.0,
-		Math.min(1.0, ((1.0 - Math.log(buf[maxIndex] / theoreticalMax) / 10) * max) / 255),
+		Math.min(1.0, ((1.0 - Math.log(buffer[maxIndex] / theoreticalMax) / 10) * max) / 255),
 	)
 	return { frequency, confidence }
 }
