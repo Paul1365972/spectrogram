@@ -1,10 +1,9 @@
-import type { AudioManager } from './audio'
+import { MAX_HISTORY, type AudioManager } from './audio'
 import { COLOR_MAPS, getColorMap } from './color_maps'
-import { MAX_ESTIMATOR_RESULTS } from './estimator'
 import type { SpectrogramSettings } from './settings'
 import { SCALA_VARIANTS } from './scales'
 
-const SPECTROGRAM_WIDTH = MAX_ESTIMATOR_RESULTS
+const SPECTROGRAM_WIDTH = MAX_HISTORY
 
 export class SpectrogramRenderer {
 	private readonly gl: WebGL2RenderingContext
@@ -23,7 +22,6 @@ export class SpectrogramRenderer {
 	}
 	private readonly canvas: HTMLCanvasElement
 
-	// Mutable state
 	private timeIndex = 0
 	private width: number
 	private height: number
@@ -35,17 +33,11 @@ export class SpectrogramRenderer {
 		this.height = 0
 		this.frequencyBinCount = -1
 
-		// Initialize WebGL context
-		const gl = this.canvas.getContext('webgl2', { preserveDrawingBuffer: false })
-		if (!gl) {
-			throw new Error('WebGL not supported')
-		}
+		// Initialize WebGL
+		const { gl, program, vertexBuffer, dataTexture, colorMapTexture, uniformLocations } =
+			this.initWebGL(this.canvas)
+
 		this.gl = gl
-
-		// Initialize all required WebGL resources
-		const { program, vertexBuffer, dataTexture, colorMapTexture, uniformLocations } =
-			this.initWebGL(gl)
-
 		this.program = program
 		this.vertexBuffer = vertexBuffer
 		this.dataTexture = dataTexture
@@ -54,10 +46,15 @@ export class SpectrogramRenderer {
 		this.changeSettings(1, 1, 1)
 	}
 
-	private initWebGL(gl: WebGLRenderingContext) {
+	private initWebGL(canvas: HTMLCanvasElement) {
+		const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: false })
+		if (!gl) {
+			throw new Error('WebGL not supported')
+		}
+		this.enableExtensions(gl)
+
 		const program = this.createProgram(gl)
 
-		// Get all uniform locations
 		const uniformLocations = {
 			offset: this.getUniformLocation(gl, program, 'offset'),
 			lowerFrequency: this.getUniformLocation(gl, program, 'lowerFrequency'),
@@ -74,11 +71,22 @@ export class SpectrogramRenderer {
 		const colorMapTexture = this.createColorMapTexture(gl)
 
 		return {
+			gl,
 			program,
 			vertexBuffer,
 			dataTexture,
 			colorMapTexture,
 			uniformLocations,
+		}
+	}
+
+	private enableExtensions(gl: WebGLRenderingContext) {
+		console.info(`Supported WebGL Extensions: ${gl.getSupportedExtensions()?.join(', ')}`)
+		if (!(gl instanceof WebGL2RenderingContext) && gl.getExtension('OES_texture_float') === null) {
+			throw new Error('OES_texture_float not available')
+		}
+		if (gl.getExtension('OES_texture_float_linear') === null) {
+			console.warn('OES_texture_float_linear not available. Interpolation deactivated')
 		}
 	}
 
@@ -115,10 +123,8 @@ export class SpectrogramRenderer {
 			throw new Error('Failed to create color map texture')
 		}
 
-		// Generate color map lookup table
 		const colorData = new Uint8Array(256 * 3 * COLOR_MAPS.length)
 
-		// Fill the color data using the provided getColor function
 		for (let i = 0; i < COLOR_MAPS.length; i++) {
 			let array = getColorMap(COLOR_MAPS[i])
 			for (let j = 0; j < 256; j++) {
