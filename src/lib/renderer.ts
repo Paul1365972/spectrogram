@@ -1,9 +1,9 @@
 import { SpectrogramRenderer } from './spectrogram_renderer'
 import type { SpectrogramSettings } from './settings'
-import { AudioManager } from './audio'
+import { AudioManager, MAX_HISTORY } from './audio'
 import { getTextColor } from './color_maps'
 import { inverseScale, scale, NOTES, nearestNote } from './scales'
-import { MAX_ESTIMATOR_RESULTS, type EstimatorManager } from './estimator'
+import { type EstimatorManager } from './estimators/estimator'
 
 export class Renderer {
 	private webglSpectrogram: SpectrogramRenderer
@@ -98,9 +98,9 @@ export class Renderer {
 		ctx.lineWidth = 4
 		ctx.beginPath()
 
-		const segmentWidth = (settings.speed * this.width) / MAX_ESTIMATOR_RESULTS
+		const segmentWidth = (settings.speed * this.width) / MAX_HISTORY
 
-		for (let i = 1; i < Math.min(values.length, MAX_ESTIMATOR_RESULTS / settings.speed); i++) {
+		for (let i = 1; i < Math.min(values.length, MAX_HISTORY / settings.speed); i++) {
 			const curr = values[i]
 			const prev = values[i - 1]
 			if (!curr || !prev) continue
@@ -129,7 +129,6 @@ export class Renderer {
 	}
 
 	renderNoteFeedback(ctx: CanvasRenderingContext2D, frequency: number | null) {
-		// Constants for the feedback box
 		const boxWidth = 200
 		const boxHeight = 120
 		const x = this.width - 100 - boxWidth
@@ -208,18 +207,32 @@ export class Renderer {
 
 	renderMouse(
 		ctx: CanvasRenderingContext2D,
-		mousePosition: [number, number],
 		settings: SpectrogramSettings,
+		mousePosition: [number, number],
 	) {
-		ctx.font = '20px Inconsolata'
+		ctx.font = '20px Courier New'
 		const [r, g, b] = getTextColor(settings.colorMap)
 		ctx.fillStyle = `rgb(${r},${g},${b})`
 
-		const percentage = 1.0 - (1.0 * mousePosition[1]) / this.height
-		const freq = scale(percentage, settings)
+		const frequencyPercentage = 1.0 - mousePosition[1] / this.height
+		const frequency = scale(frequencyPercentage, settings)
+		const frequencyIndex = Math.floor(this.audioManager.freqToIndex(frequency))
+
+		const historyPercentage = 1.0 - (1.0 - mousePosition[0] / this.width) / settings.speed
+		const historyIndex = Math.floor(Math.max(0, Math.min(1, historyPercentage)) * MAX_HISTORY)
+		const historyOffset = this.audioManager.getFreqBufferHistoryOffset()
+		const offsetHistoryIndex = (historyOffset + historyIndex) % MAX_HISTORY
+
+		const historyBuffer = this.audioManager.getFreqBufferHistory()
+		const decibels = historyBuffer[offsetHistoryIndex * MAX_HISTORY + frequencyIndex]
 
 		ctx.textAlign = 'left'
-		ctx.fillText(`${freq.toFixed(1)} Hz`, mousePosition[0] + 10, mousePosition[1] - 10)
+		const decibelsText = decibels > -99.9 ? (-decibels).toFixed(1).padStart(4) : 'infy'
+		ctx.fillText(
+			`${frequency.toFixed(1)} Hz -${decibelsText} dB`,
+			mousePosition[0] + 10,
+			mousePosition[1] - 10,
+		)
 
 		ctx.fillStyle = `rgba(${r},${g},${b},0.5)`
 		ctx.fillRect(0, mousePosition[1] - 1, this.width, 3)
@@ -229,8 +242,7 @@ export class Renderer {
 		this.handleResize()
 
 		if (!paused) {
-			const freqBuffer = this.audioManager.getNormalizedFreqBuffer()
-			this.webglSpectrogram.update(freqBuffer)
+			this.webglSpectrogram.update(this.audioManager.getFreqBufferNormalized())
 		}
 		this.webglSpectrogram.render(settings, this.width, this.height)
 
@@ -269,7 +281,7 @@ export class Renderer {
 		if (estimator.isPitchyValid()) {
 			this.drawTracker(ctx, settings, estimator.pitchyFrequency, 'rgb(64, 224, 64)')
 		}
-		this.renderMouse(ctx, mousePosition, settings)
+		this.renderMouse(ctx, settings, mousePosition)
 
 		this.renderNoteFeedback(ctx, estimator.isPitchyValid() ? estimator.pitchyFrequency : null)
 	}

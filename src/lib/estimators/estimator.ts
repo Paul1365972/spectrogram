@@ -1,9 +1,7 @@
 import { PitchDetector } from 'pitchy'
-import type { AudioManager } from './audio'
+import { MAX_HISTORY, type AudioManager } from '../audio'
 import { findFundamentalFrequency, findMaximumFrequencies } from './custom_estimator'
-import type { SpectrogramSettings } from './settings'
-
-export const MAX_ESTIMATOR_RESULTS = 2048
+import { type SpectrogramSettings } from '../settings'
 
 export class EstimatorManager {
 	private results: EstimatorResult[] = []
@@ -27,7 +25,7 @@ export class EstimatorManager {
 			this.audioManager.getSampleRate(),
 		)
 
-		if (this.results.length >= MAX_ESTIMATOR_RESULTS) {
+		if (this.results.length >= MAX_HISTORY) {
 			this.results.pop()
 		}
 		this.results.unshift(

@@ -1,5 +1,5 @@
-import type { AudioManager } from './audio'
-import type { SpectrogramSettings } from './settings'
+import type { AudioManager } from '../audio'
+import type { SpectrogramSettings } from '../settings'
 
 // Parabolic interpolation
 export function refinePeak(array: ArrayLike<number>, index: number) {
@@ -47,7 +47,7 @@ export function findMaximumFrequencies(
 
 // Find Fundamental Frequency via Harmonic Product Spectrum
 export function findFundamentalFrequency(audioManager: AudioManager, partials: number) {
-	const freqBuffer = audioManager.getNormalizedFreqBuffer()
+	const freqBuffer = audioManager.getFreqBufferNormalized()
 	const lowerCutoff = Math.floor(audioManager.freqToIndex(50.0))
 	const upperCutoff = Math.ceil(audioManager.freqToIndex(600.0))
 

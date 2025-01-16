@@ -1,5 +1,7 @@
 import type { SpectrogramSettings } from './settings'
 
+export const MAX_HISTORY = 2048
+
 export class AudioManager {
 	private audioContext: AudioContext | null = null
 	private analyser: AnalyserNode | null = null
@@ -7,7 +9,9 @@ export class AudioManager {
 	private oscillatorNode: OscillatorNode | null = null
 	private timeBuffer: Float32Array | null = null
 	private freqBuffer: Float32Array | null = null
-	private normalizedFreqBuffer: Float32Array | null = null
+	private freqBufferNormalized: Float32Array | null = null
+	private freqBufferHistory: Float32Array | null = null
+	private freqBufferHistoryOffset: number = 0
 	private sampleRate: number | null = null
 	private hzPerBin: number | null = null
 
@@ -37,35 +41,10 @@ export class AudioManager {
 
 		this.timeBuffer = new Float32Array(this.analyser.fftSize)
 		this.freqBuffer = new Float32Array(this.analyser.frequencyBinCount)
-		this.normalizedFreqBuffer = new Float32Array(this.analyser.frequencyBinCount)
-	}
-
-	setOscillatorFrequency(freq: number) {
-		if (this.oscillatorNode) {
-			this.oscillatorNode.frequency.value = freq
-		}
-	}
-
-	setGain(value: number) {
-		if (this.gainNode) {
-			this.gainNode.gain.setTargetAtTime(value, this.audioContext?.currentTime || 0, 0.005)
-		}
-	}
-
-	getFreqBuffer() {
-		return this.freqBuffer!
-	}
-
-	getNormalizedFreqBuffer() {
-		return this.normalizedFreqBuffer!
-	}
-
-	getTimeBuffer() {
-		return this.timeBuffer!
-	}
-
-	getSampleRate() {
-		return this.sampleRate!
+		this.freqBufferNormalized = new Float32Array(this.analyser.frequencyBinCount)
+		this.freqBufferHistory = new Float32Array(this.analyser.frequencyBinCount * MAX_HISTORY).fill(
+			Number.NEGATIVE_INFINITY,
+		)
 	}
 
 	update(settings: SpectrogramSettings) {
@@ -74,9 +53,20 @@ export class AudioManager {
 		analyser.fftSize = settings.fftSize
 		analyser.smoothingTimeConstant = settings.smoothingFactor
 
-		this.timeBuffer = new Float32Array(analyser.fftSize)
-		this.freqBuffer = new Float32Array(analyser.frequencyBinCount)
-		this.normalizedFreqBuffer = new Float32Array(analyser.frequencyBinCount)
+		if (this.timeBuffer!.length !== analyser.fftSize) {
+			this.timeBuffer = new Float32Array(analyser.fftSize)
+		}
+		if (this.freqBuffer!.length !== analyser.frequencyBinCount) {
+			this.freqBuffer = new Float32Array(analyser.frequencyBinCount)
+		}
+		if (this.freqBufferNormalized!.length !== analyser.frequencyBinCount) {
+			this.freqBufferNormalized = new Float32Array(analyser.frequencyBinCount)
+		}
+		if (this.freqBufferHistory!.length !== analyser.frequencyBinCount * MAX_HISTORY) {
+			this.freqBufferHistory = new Float32Array(analyser.frequencyBinCount * MAX_HISTORY).fill(
+				Number.NEGATIVE_INFINITY,
+			)
+		}
 
 		analyser.getFloatTimeDomainData(this.timeBuffer!)
 		// Does the FFT with a blackman window
@@ -93,12 +83,50 @@ export class AudioManager {
 			}
 		}
 		for (let i = 0; i < this.freqBuffer!.length; i++) {
-			this.normalizedFreqBuffer![i] += this.decibelToPercentage(this.freqBuffer![i])
+			this.freqBufferNormalized![i] = this.decibelToPercentage(this.freqBuffer![i])
 		}
+		this.freqBufferHistory!.set(this.freqBuffer!, this.freqBufferHistoryOffset * MAX_HISTORY)
+		this.freqBufferHistoryOffset! = (this.freqBufferHistoryOffset! + 1) % MAX_HISTORY
 
 		this.sampleRate = this.audioContext!.sampleRate
 		const nyquist = this.sampleRate / 2.0
 		this.hzPerBin = nyquist / analyser.frequencyBinCount
+	}
+
+	setOscillatorFrequency(freq: number) {
+		if (this.oscillatorNode) {
+			this.oscillatorNode.frequency.value = freq
+		}
+	}
+
+	setGain(value: number) {
+		if (this.gainNode) {
+			this.gainNode.gain.setTargetAtTime(value, this.audioContext?.currentTime || 0, 0.005)
+		}
+	}
+
+	getTimeBuffer() {
+		return this.timeBuffer!
+	}
+
+	getFreqBuffer() {
+		return this.freqBuffer!
+	}
+
+	getFreqBufferNormalized() {
+		return this.freqBufferNormalized!
+	}
+
+	getFreqBufferHistory() {
+		return this.freqBufferHistory!
+	}
+
+	getFreqBufferHistoryOffset() {
+		return this.freqBufferHistoryOffset!
+	}
+
+	getSampleRate() {
+		return this.sampleRate!
 	}
 
 	indexToFreq(index: number): number {
@@ -113,6 +141,6 @@ export class AudioManager {
 	private decibelToPercentage(x: number) {
 		const minDecibels = -100
 		const maxDecibels = -30
-		return (x - minDecibels) / (maxDecibels - minDecibels)
+		return Math.max(0, Math.min(1, (x - minDecibels) / (maxDecibels - minDecibels)))
 	}
 }

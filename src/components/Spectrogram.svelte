@@ -5,7 +5,7 @@
 	import { Renderer } from '../lib/renderer'
 	import { scale } from '../lib/scales'
 	import { settings as settingsStore } from '../lib/store'
-	import { EstimatorManager } from '../lib/estimator'
+	import { EstimatorManager } from '../lib/estimators/estimator'
 	import { smoothPitches } from '../lib/pitch_smoothing'
 	import { TICK_VARIANTS } from '../lib/settings'
 	import { COLOR_MAPS } from '../lib/color_maps'
