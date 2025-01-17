@@ -2,6 +2,7 @@ import { PitchDetector } from 'pitchy'
 import { MAX_HISTORY, type AudioManager } from '../audio'
 import { findFundamentalFrequency, findMaximumFrequencies } from './custom_estimator'
 import { type SpectrogramSettings } from '../settings'
+import { computeLPCCoefficients, computeLPCFormants } from './lpc'
 
 export class EstimatorManager {
 	private results: EstimatorResult[] = []
@@ -12,18 +13,20 @@ export class EstimatorManager {
 	async initialize() {}
 
 	update(settings: SpectrogramSettings) {
+		const timeBuffer = this.audioManager.getTimeBuffer()
+		const sampleRate = this.audioManager.getSampleRate()
+
 		const { frequency: fundamentalFrequency, confidence: fundamentalConfidence } =
 			findFundamentalFrequency(this.audioManager, 8)
 		const frequencyMaximas = findMaximumFrequencies(this.audioManager, 3, settings)
 
-		const timeBuffer = this.audioManager.getTimeBuffer()
 		if (!this.pitchDetector || this.pitchDetector.inputLength != timeBuffer.length) {
 			this.pitchDetector = PitchDetector.forFloat32Array(timeBuffer.length)
 		}
-		let [pitchyFrequency, pitchyConfidence] = this.pitchDetector.findPitch(
-			timeBuffer,
-			this.audioManager.getSampleRate(),
-		)
+		let [pitchyFrequency, pitchyConfidence] = this.pitchDetector.findPitch(timeBuffer, sampleRate)
+
+		let lpcCoefficients = computeLPCCoefficients(timeBuffer, 10)
+		// let formants = computeLPCFormants(lpcCoefficients, sampleRate)
 
 		if (this.results.length >= MAX_HISTORY) {
 			this.results.pop()
@@ -35,6 +38,7 @@ export class EstimatorManager {
 				frequencyMaximas,
 				pitchyFrequency,
 				pitchyConfidence,
+				lpcCoefficients,
 			),
 		)
 	}
@@ -55,6 +59,7 @@ export class EstimatorResult {
 		public frequencyMaximas: number[],
 		public pitchyFrequency: number,
 		public pitchyConfidence: number,
+		public lpcCoefficients: Float32Array,
 	) {}
 
 	isPitchyValid() {

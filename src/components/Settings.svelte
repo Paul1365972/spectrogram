@@ -84,16 +84,6 @@
 				</div>
 
 				<div class="setting">
-					<label for="emphasis">Emphasis</label>
-					<select id="emphasis" bind:value={$settings.emphasis}>
-						<option value="0">None</option>
-						<option value="3">+3dB/octave</option>
-						<option value="6">+6dB/octave</option>
-						<option value="12">+12dB/octave</option>
-					</select>
-				</div>
-
-				<div class="setting">
 					<label for="scala">Scale</label>
 					<select id="scala" bind:value={$settings.scala}>
 						<option value="log">Logarithmic</option>

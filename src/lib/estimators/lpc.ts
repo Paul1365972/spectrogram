@@ -1,10 +1,30 @@
 import { Complex } from '../math/complex'
-import { applyHannWindow } from './window_functions'
+import { apply, hammingWindow, hannWindow } from './window_functions'
 
 export interface Formant {
 	frequency: number
 	bandwidth: number
 	dB: number
+}
+
+function preEmphasis(signal: Float32Array) {
+	const alpha = 0.95
+	for (let i = signal.length - 1; i > 0; i--) {
+		signal[i] = signal[i] - alpha * signal[i - 1]
+	}
+}
+
+function normalizeSignal(signal: Float32Array) {
+	const N = signal.length
+
+	let sum = 0
+	for (let n = 0; n < N; n++) {
+		sum += signal[n]
+	}
+	const average = sum / N
+	for (let n = 0; n < N; n++) {
+		signal[n] -= average
+	}
 }
 
 function computeAutocorrelation(signal: Float32Array, lpcOrder: number) {
@@ -15,7 +35,7 @@ function computeAutocorrelation(signal: Float32Array, lpcOrder: number) {
 		for (let n = 0; n < N - k; n++) {
 			R[k] += signal[n] * signal[n + k]
 		}
-		R[k] /= N
+		R[k] /= N - k
 	}
 
 	return R
@@ -23,43 +43,43 @@ function computeAutocorrelation(signal: Float32Array, lpcOrder: number) {
 
 function levinsonDurbin(R: Float32Array, lpcOrder: number) {
 	const a = new Float32Array(lpcOrder + 1)
-	const E = new Float32Array(lpcOrder + 1)
 
 	// Initialize
 	a[0] = 1.0
-	E[0] = R[0]
+	let error = R[0]
 
 	// Main recursion
 	for (let i = 0; i < lpcOrder; i++) {
 		// Compute reflection coefficient
-		let numerator = R[i + 1]
+		let sum = R[i + 1]
 		for (let j = 0; j < i; j++) {
-			numerator += a[j + 1] * R[i - j]
+			sum += a[j + 1] * R[i - j]
 		}
-		const ki = -numerator / E[i]
+		const k = -sum / error
 
 		// Update coefficients
-		a[i + 1] = ki
+		const oldA = new Float32Array(a)
 		for (let j = 0; j < i; j++) {
-			a[j + 1] += ki * a[i - j]
+			a[j + 1] += k * oldA[i - j]
 		}
+		a[i + 1] = k
 
 		// Update error
-		E[i + 1] = E[i] * (1 - ki * ki)
+		error *= 1 - k * k
 
-		if (E[i + 1] <= 0) {
+		if (error <= 0) {
 			console.warn(`TODO: Non-positive prediction error at order ${i + 1}`)
+			break
 		}
 	}
 
-	//const error = E[lpcOrder]
 	return a
 }
 
 function evaluatePolynomial(z: Complex, coefficients: Float32Array): Complex {
 	let result = new Complex(0, 0)
-	for (let i = coefficients.length - 1; i >= 0; i--) {
-		result = result.multiply(z).add(new Complex(coefficients[i], 0))
+	for (let i = 0; i < coefficients.length; i++) {
+		result = result.mul(z).add(new Complex(coefficients[i], 0))
 	}
 	return result
 }
@@ -71,32 +91,34 @@ function durandKerner(coefficients: Float32Array): Complex[] {
 	// Initialize guess roots on the unit circle
 	for (let i = 0; i < n; i++) {
 		const angle = (2 * Math.PI * i) / n
-		roots.push(Complex.fromPolar(1, angle))
+		roots.push(Complex.fromPolar(0.9, angle))
 	}
 
-	const MAX_ITERATIONS = 1000
-	const EPSILON = 1e-10
+	const MAX_ITERATIONS = 10000
+	const EPSILON = 1e-8
 
 	// Durand-Kerner
 	for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
 		let maxDiff = 0
 
-		roots = roots.map((root, i) => {
+		for (let i = 0; i < roots.length; i++) {
 			// Compute the next approximation
-			let numerator = evaluatePolynomial(root, coefficients)
+			let numerator = evaluatePolynomial(roots[i], coefficients)
 			let denominator = new Complex(1, 0)
 			for (let j = 0; j < n; j++) {
 				if (j !== i) {
-					denominator = denominator.multiply(root.subtract(roots[j]))
+					denominator = denominator.mul(roots[i].sub(roots[j]))
 				}
 			}
 
-			const newRoot = root.subtract(numerator.divide(denominator))
-			const diff = newRoot.subtract(root).magnitude()
-			maxDiff = Math.max(maxDiff, diff)
-
-			return newRoot
-		})
+			const offset = numerator.div(denominator)
+			let newRoot = roots[i].sub(offset)
+			if (newRoot.isFinite()) {
+				roots[i] = newRoot
+				const diff = offset.magnitude()
+				maxDiff = Math.max(maxDiff, diff)
+			}
+		}
 
 		// Check convergence
 		if (maxDiff < EPSILON) {
@@ -109,21 +131,23 @@ function durandKerner(coefficients: Float32Array): Complex[] {
 }
 
 function extractFormants(roots: Complex[], sampleRate: number) {
-	return roots
-		.filter((root) => root.imag > 0)
-		.map((root) => {
-			const frequency = (root.angle() * sampleRate) / (2 * Math.PI)
-			const bandwidth = (-Math.log(root.magnitude()) * sampleRate) / Math.PI
-			const dB = 20 * Math.log10(root.magnitude())
-			return { frequency, bandwidth, dB }
-		})
-		.sort((a, b) => a.frequency - b.frequency)
-		.filter(
-			(formant) =>
-				formant.frequency > 50 &&
-				formant.frequency < sampleRate / 2 - 50 &&
-				formant.bandwidth < 500,
-		)
+	return (
+		roots
+			//.filter((root) => root.imag > 0)
+			.map((root) => {
+				const frequency = (root.angle() / (2 * Math.PI)) * sampleRate
+				const bandwidth = (-Math.log(root.magnitude()) / Math.PI) * sampleRate
+				const dB = 20 * Math.log10(root.magnitude())
+				return { frequency, bandwidth, dB }
+			})
+			.sort((a, b) => a.frequency - b.frequency)
+	)
+	//.filter(
+	//	(formant) =>
+	//		formant.frequency > 50 &&
+	//		formant.frequency < sampleRate / 2 - 50 &&
+	//		formant.bandwidth < 500,
+	//)
 }
 
 function negateCoefficients(coefficients: Float32Array) {
@@ -135,16 +159,38 @@ function negateCoefficients(coefficients: Float32Array) {
 	return result
 }
 
-export function analyzeLPC(signal: Float32Array, lpcOrder: number, sampleRate: number) {
-	if (signal.length <= lpcOrder) {
-		throw new Error('Signal length must be greater than LPC order')
-	}
-
-	const windowed = applyHannWindow(signal)
-	const R = computeAutocorrelation(windowed, lpcOrder)
+export function computeLPCCoefficients(signal: Float32Array, lpcOrder: number) {
+	signal = new Float32Array(signal)
+	preEmphasis(signal)
+	apply(signal, hammingWindow(signal.length))
+	normalizeSignal(signal)
+	const R = computeAutocorrelation(signal, lpcOrder)
 	const lpcCoefficients = levinsonDurbin(R, lpcOrder)
 	const polynomialCoefficients = negateCoefficients(lpcCoefficients)
-	const roots = durandKerner(polynomialCoefficients)
+	return polynomialCoefficients
+}
+
+export function computeLPCFormants(coefficients: Float32Array, sampleRate: number) {
+	const roots = durandKerner(coefficients)
 	const formants = extractFormants(roots, sampleRate)
 	return formants
+}
+
+export function computeLPCResonance(
+	coefficients: Float32Array,
+	frequency: number,
+	sampleRate: number,
+) {
+	const omega = (2 * Math.PI * frequency) / sampleRate
+
+	let denominator = new Complex(1, 0)
+	for (let i = 0; i < coefficients.length; i++) {
+		const angle = -omega * (i + 1)
+		const coeff = new Complex(coefficients[i], 0)
+		const z = Complex.fromPolar(1, angle)
+		denominator = denominator.sub(coeff.mul(z))
+	}
+
+	const resonance = 1 / denominator.magnitude()
+	return resonance
 }

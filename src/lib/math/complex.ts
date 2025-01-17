@@ -12,18 +12,18 @@ export class Complex {
 		return new Complex(this.real + other.real, this.imag + other.imag)
 	}
 
-	subtract(other: Complex) {
+	sub(other: Complex) {
 		return new Complex(this.real - other.real, this.imag - other.imag)
 	}
 
-	multiply(other: Complex) {
+	mul(other: Complex) {
 		return new Complex(
 			this.real * other.real - this.imag * other.imag,
 			this.real * other.imag + this.imag * other.real,
 		)
 	}
 
-	divide(other: Complex) {
+	div(other: Complex) {
 		const denom = other.real * other.real + other.imag * other.imag
 		return new Complex(
 			(this.real * other.real + this.imag * other.imag) / denom,
@@ -37,5 +37,9 @@ export class Complex {
 
 	angle() {
 		return Math.atan2(this.imag, this.real)
+	}
+
+	isFinite() {
+		return Number.isFinite(this.real) && Number.isFinite(this.imag)
 	}
 }

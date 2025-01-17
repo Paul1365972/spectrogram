@@ -4,6 +4,7 @@ import { AudioManager, MAX_HISTORY } from './audio'
 import { getTextColor } from './color_maps'
 import { inverseScale, scale, NOTES, nearestNote } from './scales'
 import { type EstimatorManager } from './estimators/estimator'
+import { computeLPCResonance } from './estimators/lpc'
 
 export class Renderer {
 	private webglSpectrogram: SpectrogramRenderer
@@ -113,6 +114,33 @@ export class Renderer {
 			ctx.moveTo(prevX, prevY)
 			ctx.lineTo(currX, currY)
 		}
+		ctx.stroke()
+	}
+
+	drawResonanceLine(ctx: CanvasRenderingContext2D, settings: SpectrogramSettings, color: string) {
+		const x = this.width - 60
+		ctx.strokeStyle = color
+		ctx.lineCap = 'round'
+		ctx.lineJoin = 'round'
+		ctx.lineWidth = 4
+		ctx.beginPath()
+
+		const { lpcCoefficients } = this.estimatorManager.getResult()
+		const sampleRate = this.audioManager.getSampleRate()
+
+		for (let y = 0; y < this.height; y++) {
+			const frequency = scale(1.0 - y / this.height, settings)
+
+			const resonance = computeLPCResonance(lpcCoefficients, frequency, sampleRate)
+			const db = resonance
+			const x = db * 100
+
+			if (y === 0) {
+				ctx.moveTo(this.width - 10 - x, y)
+			}
+			ctx.lineTo(this.width - 10 - x, y)
+		}
+
 		ctx.stroke()
 	}
 
@@ -262,6 +290,7 @@ export class Renderer {
 				: null
 		})
 		this.drawLine(ctx, settings, 'rgb(64, 224, 64)', pitchyLine)
+		// this.drawResonanceLine(ctx, settings, 'rgb(224, 64, 64, 0.5)')
 
 		if (settings.noteGuidelines) {
 			this.renderNoteGuidelines(ctx, settings)

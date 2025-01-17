@@ -53,21 +53,30 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.code === 'Space') {
-			paused = !paused
-		} else if (event.code === 'KeyF') {
-			$settingsStore.followPitch = !$settingsStore.followPitch
-		} else if (event.code === 'KeyG') {
-			$settingsStore.noteGuidelines = !$settingsStore.noteGuidelines
-		} else if (event.code === 'KeyT') {
-			$settingsStore.tickVariant =
-				TICK_VARIANTS[
-					(TICK_VARIANTS.indexOf($settingsStore.tickVariant) + 1) % TICK_VARIANTS.length
-				]
-		} else if (event.code === 'KeyC') {
-			$settingsStore.colorMap =
-				COLOR_MAPS[(COLOR_MAPS.indexOf($settingsStore.colorMap) + 1) % COLOR_MAPS.length]
+		switch (event.code) {
+			case 'Space':
+				paused = !paused
+				break
+			case 'KeyF':
+				$settingsStore.followPitch = !$settingsStore.followPitch
+				break
+			case 'KeyG':
+				$settingsStore.noteGuidelines = !$settingsStore.noteGuidelines
+				break
+			case 'KeyT':
+				$settingsStore.tickVariant =
+					TICK_VARIANTS[
+						(TICK_VARIANTS.indexOf($settingsStore.tickVariant) + 1) % TICK_VARIANTS.length
+					]
+				break
+			case 'KeyC':
+				$settingsStore.colorMap =
+					COLOR_MAPS[(COLOR_MAPS.indexOf($settingsStore.colorMap) + 1) % COLOR_MAPS.length]
+				break
+			default:
+				return
 		}
+		event.preventDefault()
 	}
 
 	function updateOscillatorFrequency() {

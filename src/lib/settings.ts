@@ -10,7 +10,6 @@ export type SpectrogramSettings = {
 	smoothingFactor: number
 	lowerFrequency: number
 	upperFrequency: number
-	emphasis: '0' | '3' | '6' | '12'
 	scala: ScalaVariant
 	speed: number
 	volume: number
@@ -27,7 +26,6 @@ export function getDefaultSettings() {
 		smoothingFactor: 0,
 		lowerFrequency: 45,
 		upperFrequency: 11000,
-		emphasis: '0',
 		scala: 'log',
 		speed: 5,
 		volume: 50,
