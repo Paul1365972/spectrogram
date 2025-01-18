@@ -1,20 +1,23 @@
 import { Complex } from '../math/complex'
 import { apply, hammingWindow, hannWindow } from './window_functions'
 
+type FloatArray = Float32Array | Float64Array
+const FloatArray = Float64Array
+
 export interface Formant {
 	frequency: number
 	bandwidth: number
 	dB: number
 }
 
-function preEmphasis(signal: Float32Array) {
+function preEmphasis(signal: FloatArray) {
 	const alpha = 0.95
 	for (let i = signal.length - 1; i > 0; i--) {
 		signal[i] = signal[i] - alpha * signal[i - 1]
 	}
 }
 
-function normalizeSignal(signal: Float32Array) {
+function normalizeSignal(signal: FloatArray) {
 	const N = signal.length
 
 	let sum = 0
@@ -27,9 +30,9 @@ function normalizeSignal(signal: Float32Array) {
 	}
 }
 
-function computeAutocorrelation(signal: Float32Array, lpcOrder: number) {
+function computeAutocorrelation(signal: FloatArray, lpcOrder: number) {
 	const N = signal.length
-	const R = new Float32Array(lpcOrder + 1)
+	const R = new FloatArray(lpcOrder + 1)
 
 	for (let k = 0; k <= lpcOrder; k++) {
 		for (let n = 0; n < N - k; n++) {
@@ -41,8 +44,9 @@ function computeAutocorrelation(signal: Float32Array, lpcOrder: number) {
 	return R
 }
 
-function levinsonDurbin(R: Float32Array, lpcOrder: number) {
-	const a = new Float32Array(lpcOrder + 1)
+function levinsonDurbin(R: FloatArray, lpcOrder: number) {
+	const a = new FloatArray(lpcOrder + 1)
+	const oldA = new FloatArray(lpcOrder + 1)
 
 	// Initialize
 	a[0] = 1.0
@@ -58,7 +62,7 @@ function levinsonDurbin(R: Float32Array, lpcOrder: number) {
 		const k = -sum / error
 
 		// Update coefficients
-		const oldA = new Float32Array(a)
+		oldA.set(a)
 		for (let j = 0; j < i; j++) {
 			a[j + 1] += k * oldA[i - j]
 		}
@@ -76,7 +80,7 @@ function levinsonDurbin(R: Float32Array, lpcOrder: number) {
 	return a
 }
 
-function evaluatePolynomial(z: Complex, coefficients: Float32Array): Complex {
+function evaluatePolynomial(z: Complex, coefficients: FloatArray): Complex {
 	let result = new Complex(0, 0)
 	for (let i = 0; i < coefficients.length; i++) {
 		result = result.mul(z).add(new Complex(coefficients[i], 0))
@@ -84,7 +88,7 @@ function evaluatePolynomial(z: Complex, coefficients: Float32Array): Complex {
 	return result
 }
 
-function durandKerner(coefficients: Float32Array): Complex[] {
+function durandKerner(coefficients: FloatArray): Complex[] {
 	const n = coefficients.length - 1
 	let roots: Complex[] = []
 
@@ -150,8 +154,8 @@ function extractFormants(roots: Complex[], sampleRate: number) {
 	//)
 }
 
-function negateCoefficients(coefficients: Float32Array) {
-	let result = new Float32Array(coefficients.length)
+function negateCoefficients(coefficients: FloatArray) {
+	let result = new FloatArray(coefficients.length)
 	result[0] = coefficients[0]
 	for (let i = 1; i < coefficients.length; i++) {
 		result[i] = -coefficients[i]
@@ -159,25 +163,25 @@ function negateCoefficients(coefficients: Float32Array) {
 	return result
 }
 
-export function computeLPCCoefficients(signal: Float32Array, lpcOrder: number) {
-	signal = new Float32Array(signal)
+export function computeLPCCoefficients(inputSignal: FloatArray, lpcOrder: number) {
+	const signal = new FloatArray(inputSignal)
 	preEmphasis(signal)
 	apply(signal, hammingWindow(signal.length))
 	normalizeSignal(signal)
 	const R = computeAutocorrelation(signal, lpcOrder)
 	const lpcCoefficients = levinsonDurbin(R, lpcOrder)
 	const polynomialCoefficients = negateCoefficients(lpcCoefficients)
-	return polynomialCoefficients
+	return new Float32Array(polynomialCoefficients)
 }
 
-export function computeLPCFormants(coefficients: Float32Array, sampleRate: number) {
+export function computeLPCFormants(coefficients: FloatArray, sampleRate: number) {
 	const roots = durandKerner(coefficients)
 	const formants = extractFormants(roots, sampleRate)
 	return formants
 }
 
 export function computeLPCResonance(
-	coefficients: Float32Array,
+	coefficients: FloatArray,
 	frequency: number,
 	sampleRate: number,
 ) {

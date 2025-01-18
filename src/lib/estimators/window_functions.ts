@@ -15,7 +15,7 @@ export function blackmanWindow(length: number) {
 	return window
 }
 
-export function hammingWindow(length: number): Float32Array {
+export function hammingWindow(length: number) {
 	const window = new Float32Array(length)
 
 	const alpha = 0.53836
@@ -29,7 +29,7 @@ export function hammingWindow(length: number): Float32Array {
 	return window
 }
 
-export function hannWindow(length: number): Float32Array {
+export function hannWindow(length: number) {
 	const window = new Float32Array(length)
 
 	for (let n = 0; n < length; n++) {
@@ -40,7 +40,7 @@ export function hannWindow(length: number): Float32Array {
 	return window
 }
 
-export function apply(signal: Float32Array, kernel: Float32Array) {
+export function apply(signal: Float32Array | Float64Array, kernel: Float32Array | Float64Array) {
 	if (signal.length !== kernel.length) {
 		throw new Error()
 	}
