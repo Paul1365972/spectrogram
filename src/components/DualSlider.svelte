@@ -1,16 +1,52 @@
 <script lang="ts">
-	import { logScale, inverseLogScale } from '../lib/scales'
-	import { getDefaultSettings } from '../lib/settings'
-	import { settings } from '../lib/store'
+	import { logScale, inverseLogScale, linearScale, inverseLinearScale } from '../lib/scales'
 
-	let { id } = $props()
+	interface Props {
+		id?: string
+		lowerValue: number
+		upperValue: number
+		minValue: number
+		maxValue: number
+		defaultLowerValue?: number
+		defaultUpperValue?: number
+		minSeparationPercentage?: number
+		logarithmic?: boolean
+		unit?: string
+		onChange: (lower: number, upper: number) => void
+	}
 
-	const MIN_FREQ = 20
-	const MAX_FREQ = 20000
-	const MIN_RANGE_RATIO = 0.05
+	let {
+		id,
+		lowerValue,
+		upperValue,
+		minValue,
+		maxValue,
+		defaultLowerValue,
+		defaultUpperValue,
+		minSeparationPercentage = 0.05,
+		logarithmic = false,
+		unit = '',
+		onChange,
+	}: Props = $props()
 
-	let lowerPercentage = $derived(inverseLogScale($settings.lowerFrequency, MIN_FREQ, MAX_FREQ))
-	let upperPercentage = $derived(inverseLogScale($settings.upperFrequency, MIN_FREQ, MAX_FREQ))
+	function scale(value: number) {
+		if (logarithmic) {
+			return logScale(value, minValue, maxValue)
+		} else {
+			return linearScale(value, minValue, maxValue)
+		}
+	}
+
+	function inverseScale(value: number) {
+		if (logarithmic) {
+			return inverseLogScale(value, minValue, maxValue)
+		} else {
+			return inverseLinearScale(value, minValue, maxValue)
+		}
+	}
+
+	let lowerPercentage = $derived(inverseScale(lowerValue))
+	let upperPercentage = $derived(inverseScale(upperValue))
 
 	function handleStart(event: MouseEvent | TouchEvent, isLower: boolean) {
 		event.preventDefault()
@@ -19,18 +55,19 @@
 		const startX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX
 		const startPos = isLower ? lowerPercentage : upperPercentage
 
-		function onMove(moveEvent: MouseEvent | TouchEvent) {
-			const currentX =
-				moveEvent instanceof MouseEvent ? moveEvent.clientX : moveEvent.touches[0].clientX
+		function onMove(event: MouseEvent | TouchEvent) {
+			const currentX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX
 			const delta = (currentX - startX) / rect.width
 			let newPercentage = Math.max(0, Math.min(1, startPos + delta))
 
 			if (isLower) {
-				newPercentage = Math.min(newPercentage, upperPercentage - MIN_RANGE_RATIO)
-				$settings.lowerFrequency = logScale(newPercentage, MIN_FREQ, MAX_FREQ)
+				newPercentage = Math.min(newPercentage, upperPercentage - minSeparationPercentage)
+				const newLower = scale(newPercentage)
+				onChange(newLower, upperValue)
 			} else {
-				newPercentage = Math.max(newPercentage, lowerPercentage + MIN_RANGE_RATIO)
-				$settings.upperFrequency = logScale(newPercentage, MIN_FREQ, MAX_FREQ)
+				newPercentage = Math.max(newPercentage, lowerPercentage + minSeparationPercentage)
+				const newUpper = scale(newPercentage)
+				onChange(lowerValue, newUpper)
 			}
 		}
 
@@ -47,25 +84,27 @@
 		window.addEventListener('touchend', onEnd)
 	}
 
-	function handleDoubleClick(event: MouseEvent | TouchEvent, lower: boolean, upper: boolean) {
-		event.stopPropagation()
-		const defaultSettings = getDefaultSettings()
-		if (lower && defaultSettings.lowerFrequency < $settings.upperFrequency) {
-			$settings.lowerFrequency = defaultSettings.lowerFrequency
+	function handleLowerDoubleClick(event: MouseEvent | TouchEvent) {
+		if (defaultLowerValue != null && defaultLowerValue < upperValue) {
+			onChange(defaultLowerValue, upperValue)
+			event.stopPropagation()
 		}
-		if (upper && defaultSettings.upperFrequency > $settings.lowerFrequency) {
-			$settings.upperFrequency = defaultSettings.upperFrequency
+	}
+	function handleUpperDoubleClick(event: MouseEvent | TouchEvent) {
+		if (defaultUpperValue != null && defaultUpperValue > lowerValue) {
+			onChange(lowerValue, defaultUpperValue)
+			event.stopPropagation()
+		}
+	}
+	function handleDoubleClick(event: MouseEvent | TouchEvent) {
+		if (defaultLowerValue != null && defaultUpperValue != null) {
+			onChange(defaultLowerValue, defaultUpperValue)
+			event.stopPropagation()
 		}
 	}
 </script>
 
-<div
-	{id}
-	class="slider-container"
-	role="button"
-	tabindex="0"
-	ondblclick={(e) => handleDoubleClick(e, true, true)}
->
+<div {id} class="slider-container" role="button" tabindex="0" ondblclick={handleDoubleClick}>
 	<div class="track">
 		<div
 			class="track-fill"
@@ -77,18 +116,18 @@
 		style="left: {lowerPercentage * 100}%"
 		onmousedown={(e) => handleStart(e, true)}
 		ontouchstart={(e) => handleStart(e, true)}
-		ondblclick={(e) => handleDoubleClick(e, true, false)}
+		ondblclick={handleLowerDoubleClick}
 	>
-		<span class="freq-label">{Math.round($settings.lowerFrequency)} Hz</span>
+		<span class="freq-label">{Math.round(lowerValue)} {unit}</span>
 	</button>
 	<button
 		class="handle handle-upper"
 		style="left: {upperPercentage * 100}%"
 		onmousedown={(e) => handleStart(e, false)}
 		ontouchstart={(e) => handleStart(e, false)}
-		ondblclick={(e) => handleDoubleClick(e, false, true)}
+		ondblclick={handleUpperDoubleClick}
 	>
-		<span class="freq-label">{Math.round($settings.upperFrequency)} Hz</span>
+		<span class="freq-label">{Math.round(upperValue)} {unit}</span>
 	</button>
 </div>
 

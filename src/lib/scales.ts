@@ -28,17 +28,36 @@ export function inverseLogScale(y: number, a: number, b: number) {
 	return (Math.log(y) - lower) / (upper - lower)
 }
 
+export function linearScale(x: number, a: number, b: number) {
+	return a + x * (b - a)
+}
+
+export function inverseLinearScale(y: number, a: number, b: number) {
+	return (y - a) / (b - a)
+}
+
+export function melScale(x: number, a: number, b: number) {
+	const lower = 1127 * Math.log(1 + a / 700)
+	const upper = 1127 * Math.log(1 + b / 700)
+	const mel = lower + x * (upper - lower)
+	return 700 * (Math.exp(mel / 1127) - 1)
+}
+
+export function inverseMelScale(y: number, a: number, b: number) {
+	const lower = 1127 * Math.log(1 + a / 700)
+	const upper = 1127 * Math.log(1 + b / 700)
+	const mel = 1127 * Math.log(1 + y / 700)
+	return (mel - lower) / (upper - lower)
+}
+
 export function scale(x: number, settings: SpectrogramSettings) {
 	switch (settings.scala) {
 		case 'log':
 			return logScale(x, settings.lowerFrequency, settings.upperFrequency)
 		case 'linear':
-			return settings.lowerFrequency + x * (settings.upperFrequency - settings.lowerFrequency)
+			return linearScale(x, settings.lowerFrequency, settings.upperFrequency)
 		case 'mel':
-			const lower = 1127 * Math.log(1 + settings.lowerFrequency / 700)
-			const upper = 1127 * Math.log(1 + settings.upperFrequency / 700)
-			const mel = lower + x * (upper - lower)
-			return 700 * (Math.exp(mel / 1127) - 1)
+			return melScale(x, settings.lowerFrequency, settings.upperFrequency)
 	}
 }
 
@@ -47,12 +66,9 @@ export function inverseScale(y: number, settings: SpectrogramSettings) {
 		case 'log':
 			return inverseLogScale(y, settings.lowerFrequency, settings.upperFrequency)
 		case 'linear':
-			return (y - settings.lowerFrequency) / (settings.upperFrequency - settings.lowerFrequency)
+			return inverseLinearScale(y, settings.lowerFrequency, settings.upperFrequency)
 		case 'mel':
-			const lower = 1127 * Math.log(1 + settings.lowerFrequency / 700)
-			const upper = 1127 * Math.log(1 + settings.upperFrequency / 700)
-			const mel = 1127 * Math.log(1 + y / 700)
-			return (mel - lower) / (upper - lower)
+			return inverseMelScale(y, settings.lowerFrequency, settings.upperFrequency)
 	}
 }
 

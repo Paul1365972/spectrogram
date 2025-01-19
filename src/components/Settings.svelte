@@ -80,7 +80,21 @@
 
 				<div class="setting">
 					<label for="frequency-range">Frequency Range</label>
-					<DualSlider id="frequency-range" />
+					<DualSlider
+						id="frequency-range"
+						minValue={20}
+						maxValue={20000}
+						lowerValue={$settings.lowerFrequency}
+						upperValue={$settings.upperFrequency}
+						defaultLowerValue={getDefaultSettings().lowerFrequency}
+						defaultUpperValue={getDefaultSettings().upperFrequency}
+						logarithmic={true}
+						unit="Hz"
+						onChange={(lower, upper) => {
+							$settings.lowerFrequency = lower
+							$settings.upperFrequency = upper
+						}}
+					/>
 				</div>
 
 				<div class="setting">
