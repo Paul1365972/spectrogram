@@ -257,7 +257,8 @@ export class Renderer {
 		const historyIndex = Math.floor(Math.max(0, Math.min(1, historyPercentage)) * MAX_HISTORY)
 		const offsetHistoryIndex = (audioBuffer.offset + historyIndex) % MAX_HISTORY
 
-		const decibels = audioBuffer.history[offsetHistoryIndex * MAX_HISTORY + frequencyIndex]
+		const decibels =
+			audioBuffer.history[offsetHistoryIndex * audioBuffer.freq.length + frequencyIndex]
 
 		ctx.textAlign = 'left'
 		const decibelsText = decibels > -99.9 ? (-decibels).toFixed(1).padStart(4) : 'infy'
@@ -276,7 +277,7 @@ export class Renderer {
 
 		const displayBuffer = this.audioManager.getDisplayBuffer()
 		if (!paused && displayBuffer) {
-			this.webglSpectrogram.update(displayBuffer.freqNormalized)
+			this.webglSpectrogram.update(displayBuffer)
 		}
 		this.webglSpectrogram.render(settings, this.width, this.height)
 

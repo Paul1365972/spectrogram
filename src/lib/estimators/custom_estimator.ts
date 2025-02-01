@@ -47,7 +47,11 @@ export function findMaximumFrequencies(
 }
 
 // Find Fundamental Frequency via Harmonic Product Spectrum
-export function findFundamentalFrequency(audioManager: AudioManager, audioBuffer: AudioBuffer, partials: number) {
+export function findFundamentalFrequency(
+	audioManager: AudioManager,
+	audioBuffer: AudioBuffer,
+	partials: number,
+) {
 	const freqBuffer = audioBuffer.freqNormalized
 	const hzPerBin = audioManager.getNyquist() / freqBuffer.length
 	const lowerCutoff = Math.floor(50.0 / hzPerBin)

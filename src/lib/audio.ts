@@ -144,6 +144,8 @@ export class AudioBuffer {
 	public freqNormalized: Float32Array
 	public history: Float32Array
 	public offset: number
+	public minDecibels: number
+	public maxDecibels: number
 
 	constructor(audioContext: AudioContext, stream: MediaStream) {
 		this.stream = stream
@@ -153,6 +155,8 @@ export class AudioBuffer {
 
 		const fftSize = this.analyser.fftSize
 		const frequencyBinCount = this.analyser.frequencyBinCount
+		this.minDecibels = this.analyser.minDecibels
+		this.maxDecibels = this.analyser.maxDecibels
 		this.time = new Float32Array(fftSize)
 		this.freq = new Float32Array(frequencyBinCount)
 		this.freqNormalized = new Float32Array(frequencyBinCount)
@@ -176,9 +180,20 @@ export class AudioBuffer {
 			this.freqNormalized = new Float32Array(this.analyser.frequencyBinCount)
 		}
 		if (this.history.length !== this.analyser.frequencyBinCount * MAX_HISTORY) {
-			this.history = new Float32Array(this.analyser.frequencyBinCount * MAX_HISTORY).fill(
-				Number.NEGATIVE_INFINITY,
-			)
+			const newHistory = new Float32Array(this.analyser.frequencyBinCount * MAX_HISTORY)
+			const factor = this.history.length / newHistory.length
+			const binCount = this.analyser.frequencyBinCount
+			const oldBinCount = this.history.length / MAX_HISTORY
+			for (let i = 0; i < MAX_HISTORY; i++) {
+				for (let j = 0; j < binCount; j++) {
+					let sum = 0
+					for (let k = 0; k < factor; k++) {
+						sum += this.history[i * oldBinCount + Math.floor(j * factor) + k]
+					}
+					newHistory[i * binCount + j] = sum / Math.max(1, factor)
+				}
+			}
+			this.history = newHistory
 		}
 	}
 
@@ -186,12 +201,10 @@ export class AudioBuffer {
 		this.analyser.getFloatTimeDomainData(this.time)
 		this.analyser.getFloatFrequencyData(this.freq)
 
-		const minDecibels = this.analyser.minDecibels
-		const maxDecibels = this.analyser.maxDecibels
 		for (let i = 0; i < this.freq.length; i++) {
 			this.freqNormalized[i] = Math.max(
 				0,
-				Math.min(1, (this.freq[i] - minDecibels) / (maxDecibels - minDecibels)),
+				Math.min(1, (this.freq[i] - this.minDecibels) / (this.maxDecibels - this.minDecibels)),
 			)
 		}
 

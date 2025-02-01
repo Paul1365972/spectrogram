@@ -1,4 +1,4 @@
-import { MAX_HISTORY, type AudioManager } from './audio'
+import { AudioBuffer, MAX_HISTORY, type AudioManager } from './audio'
 import { COLOR_MAPS, getColorMap } from './color_maps'
 import type { SpectrogramSettings } from './settings'
 import { SCALA_VARIANTS } from './scales'
@@ -43,7 +43,6 @@ export class SpectrogramRenderer {
 		this.dataTexture = dataTexture
 		this.colorMapTexture = colorMapTexture
 		this.uniformLocations = uniformLocations
-		this.changeSettings(1, 1, 1)
 	}
 
 	private initWebGL(canvas: HTMLCanvasElement) {
@@ -112,8 +111,8 @@ export class SpectrogramRenderer {
 		gl.bindTexture(gl.TEXTURE_2D, texture)
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
 
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 		return texture
 	}
 
@@ -209,7 +208,7 @@ export class SpectrogramRenderer {
             void main() {
                 float x = (texCoord.x - 1.0) / speed + offset;
                 float frequency = scaleFrequency(texCoord.y);
-                vec2 scaledCoord = vec2(x, frequency / nyquistFrequency);
+                vec2 scaledCoord = vec2(frequency / nyquistFrequency, x);
                 float value = texture2D(audioData, scaledCoord).r;
 
                 vec2 colorCoord = vec2(value, colorMap);
@@ -273,55 +272,57 @@ export class SpectrogramRenderer {
 		return location!
 	}
 
-	update(freqBuffer: Float32Array) {
-		this.changeSettings(this.width, this.height, freqBuffer.length)
+	update(audioBuffer: AudioBuffer) {
+		const freqBuffer = audioBuffer.freqNormalized
+		if (freqBuffer.length !== this.frequencyBinCount) {
+			const history = audioBuffer.history.map((x) =>
+				Math.max(
+					0,
+					Math.min(
+						1,
+						(x - audioBuffer.minDecibels) / (audioBuffer.maxDecibels - audioBuffer.minDecibels),
+					),
+				),
+			)
 
-		this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
-		this.gl.texSubImage2D(
-			this.gl.TEXTURE_2D,
-			0,
-			this.timeIndex,
-			0,
-			1,
-			this.frequencyBinCount,
-			this.gl.RED,
-			this.gl.FLOAT,
-			freqBuffer,
-		)
-
-		this.timeIndex = (this.timeIndex + 1) % SPECTROGRAM_WIDTH
-	}
-
-	changeSettings(width: number, height: number, frequencyBinCount: number) {
-		if (width !== this.width || this.height !== height) {
-			this.canvas.width = width
-			this.canvas.height = height
-		}
-
-		if (frequencyBinCount !== this.frequencyBinCount) {
 			this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
-			const emptyData = new Float32Array(SPECTROGRAM_WIDTH * frequencyBinCount)
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
 				0,
 				this.gl.R32F,
+				freqBuffer.length,
 				SPECTROGRAM_WIDTH,
-				frequencyBinCount,
 				0,
 				this.gl.RED,
 				this.gl.FLOAT,
-				emptyData,
+				history,
 			)
-			this.timeIndex = 0
-		}
 
-		this.width = width
-		this.height = height
-		this.frequencyBinCount = frequencyBinCount
+			this.timeIndex = audioBuffer.offset
+			this.frequencyBinCount = freqBuffer.length
+		} else {
+			this.gl.bindTexture(this.gl.TEXTURE_2D, this.dataTexture)
+			this.gl.texSubImage2D(
+				this.gl.TEXTURE_2D,
+				0,
+				0,
+				this.timeIndex,
+				this.frequencyBinCount,
+				1,
+				this.gl.RED,
+				this.gl.FLOAT,
+				freqBuffer,
+			)
+
+			this.timeIndex = (this.timeIndex + 1) % SPECTROGRAM_WIDTH
+		}
 	}
 
 	render(settings: SpectrogramSettings, width: number, height: number) {
-		this.changeSettings(width, height, this.frequencyBinCount)
+		if (width !== this.width || this.height !== height) {
+			this.width = this.canvas.width = width
+			this.height = this.canvas.height = height
+		}
 
 		this.gl.viewport(0, 0, this.width, this.height)
 		this.gl.clear(this.gl.COLOR_BUFFER_BIT)
