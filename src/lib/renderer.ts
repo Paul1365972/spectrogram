@@ -1,6 +1,6 @@
 import { SpectrogramRenderer } from './spectrogram_renderer'
 import type { SpectrogramSettings } from './settings'
-import { AudioManager, MAX_HISTORY } from './audio'
+import { AudioBuffer, AudioManager, MAX_HISTORY } from './audio'
 import { getTextColor } from './color_maps'
 import { inverseScale, scale, NOTES, nearestNote } from './scales'
 import { type EstimatorManager } from './estimators/estimator'
@@ -125,7 +125,11 @@ export class Renderer {
 		ctx.lineWidth = 4
 		ctx.beginPath()
 
-		const { lpcCoefficients } = this.estimatorManager.getResult()
+		const estimatorResult = this.estimatorManager.getResult()
+		if (!estimatorResult) {
+			return
+		}
+		const { lpcCoefficients } = estimatorResult
 		const sampleRate = this.audioManager.getSampleRate()
 
 		for (let y = 0; y < this.height; y++) {
@@ -236,23 +240,24 @@ export class Renderer {
 	renderMouse(
 		ctx: CanvasRenderingContext2D,
 		settings: SpectrogramSettings,
+		audioBuffer: AudioBuffer,
 		mousePosition: [number, number],
 	) {
 		ctx.font = '20px Courier New'
 		const [r, g, b] = getTextColor(settings.colorMap)
 		ctx.fillStyle = `rgb(${r},${g},${b})`
 
+		const hzPerBin = this.audioManager.getNyquist() / audioBuffer.freq.length
+
 		const frequencyPercentage = 1.0 - mousePosition[1] / this.height
 		const frequency = scale(frequencyPercentage, settings)
-		const frequencyIndex = Math.floor(this.audioManager.freqToIndex(frequency))
+		const frequencyIndex = Math.floor(frequency / hzPerBin)
 
 		const historyPercentage = 1.0 - (1.0 - mousePosition[0] / this.width) / settings.speed
 		const historyIndex = Math.floor(Math.max(0, Math.min(1, historyPercentage)) * MAX_HISTORY)
-		const historyOffset = this.audioManager.getFreqBufferHistoryOffset()
-		const offsetHistoryIndex = (historyOffset + historyIndex) % MAX_HISTORY
+		const offsetHistoryIndex = (audioBuffer.offset + historyIndex) % MAX_HISTORY
 
-		const historyBuffer = this.audioManager.getFreqBufferHistory()
-		const decibels = historyBuffer[offsetHistoryIndex * MAX_HISTORY + frequencyIndex]
+		const decibels = audioBuffer.history[offsetHistoryIndex * MAX_HISTORY + frequencyIndex]
 
 		ctx.textAlign = 'left'
 		const decibelsText = decibels > -99.9 ? (-decibels).toFixed(1).padStart(4) : 'infy'
@@ -269,8 +274,9 @@ export class Renderer {
 	render(settings: SpectrogramSettings, mousePosition: [number, number], paused: boolean) {
 		this.handleResize()
 
-		if (!paused) {
-			this.webglSpectrogram.update(this.audioManager.getFreqBufferNormalized())
+		const primaryBuffer = this.audioManager.getPrimary()
+		if (!paused && primaryBuffer) {
+			this.webglSpectrogram.update(primaryBuffer.freqNormalized)
 		}
 		this.webglSpectrogram.render(settings, this.width, this.height)
 
@@ -303,15 +309,24 @@ export class Renderer {
 		}
 
 		// Render estimator results
-		for (const frequency of estimator.frequencyMaximas) {
-			this.drawTick(ctx, settings, this.width - 120, frequency, null, 18)
-		}
-		this.drawTick(ctx, settings, this.width - 220, estimator.fundamentalFrequency, null, 18)
-		if (estimator.isPitchyValid()) {
-			this.drawTracker(ctx, settings, estimator.pitchyFrequency, 'rgb(64, 224, 64)')
-		}
-		this.renderMouse(ctx, settings, mousePosition)
+		if (estimator) {
+			for (const frequency of estimator.frequencyMaximas) {
+				this.drawTick(ctx, settings, this.width - 120, frequency, null, 18)
+			}
 
-		this.renderNoteFeedback(ctx, estimator.isPitchyValid() ? estimator.pitchyFrequency : null)
+			this.drawTick(ctx, settings, this.width - 220, estimator.fundamentalFrequency, null, 18)
+
+			if (estimator.isPitchyValid()) {
+				this.drawTracker(ctx, settings, estimator.pitchyFrequency, 'rgb(64, 224, 64)')
+			}
+		}
+
+		if (primaryBuffer) {
+			this.renderMouse(ctx, settings, primaryBuffer, mousePosition)
+		}
+
+		if (estimator) {
+			this.renderNoteFeedback(ctx, estimator.isPitchyValid() ? estimator.pitchyFrequency : null)
+		}
 	}
 }

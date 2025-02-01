@@ -16,8 +16,9 @@ export function findMaximumFrequencies(
 	amount: number,
 	settings: SpectrogramSettings,
 ) {
-	const freqBuffer = audioManager.getFreqBuffer()
-	const minDistance = audioManager.freqToIndex(50)
+	const freqBuffer = audioManager.getPrimary()!.freq
+	const hzPerBin = audioManager.getNyquist() / freqBuffer.length
+	const minDistance = 50 / hzPerBin
 
 	const selectedPoints = []
 	for (let i = 0; i < amount; i++) {
@@ -38,7 +39,7 @@ export function findMaximumFrequencies(
 	const maximas = []
 	for (const point of selectedPoints) {
 		const { index } = refinePeak(freqBuffer, point)
-		const frequency = audioManager.indexToFreq(index)
+		const frequency = index * hzPerBin
 		maximas.push(frequency)
 	}
 
@@ -47,9 +48,10 @@ export function findMaximumFrequencies(
 
 // Find Fundamental Frequency via Harmonic Product Spectrum
 export function findFundamentalFrequency(audioManager: AudioManager, partials: number) {
-	const freqBuffer = audioManager.getFreqBufferNormalized()
-	const lowerCutoff = Math.floor(audioManager.freqToIndex(50.0))
-	const upperCutoff = Math.ceil(audioManager.freqToIndex(600.0))
+	const freqBuffer = audioManager.getPrimary()!.freqNormalized
+	const hzPerBin = audioManager.getNyquist() / freqBuffer.length
+	const lowerCutoff = Math.floor(50.0 / hzPerBin)
+	const upperCutoff = Math.ceil(600.0 / hzPerBin)
 
 	const buffer = new Float32Array(freqBuffer.length).fill(1)
 
@@ -71,7 +73,7 @@ export function findFundamentalFrequency(audioManager: AudioManager, partials: n
 		}
 	}
 
-	const frequency = audioManager.indexToFreq(maxIndex)
+	const frequency = maxIndex * hzPerBin
 	// TODO: The confidence calculation is not optimal
 	const max = Math.max(...freqBuffer.slice(lowerCutoff, upperCutoff))
 	const theoreticalMax = Math.pow(0.1 + 0.9 * max, partials)

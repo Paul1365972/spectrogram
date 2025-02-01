@@ -1,3 +1,4 @@
+import type { AudioSources } from './audio_sources'
 import type { ColorMap } from './color_maps'
 import type { ScalaVariant } from './scales'
 
@@ -12,25 +13,25 @@ export type SpectrogramSettings = {
 	upperFrequency: number
 	scala: ScalaVariant
 	speed: number
-	volume: number
+	toneVolume: number
 	followPitch: boolean
+	audioSource: AudioSources
 }
 
-export function getDefaultSettings() {
-	return {
-		tickVariant: 'preset',
-		colorMap: 'grayscale',
-		interpolation: 'nearest',
-		noteGuidelines: false,
-		fftSize: 4096,
-		smoothingFactor: 0,
-		lowerFrequency: 45,
-		upperFrequency: 11000,
-		scala: 'log',
-		speed: 5,
-		volume: 50,
-		followPitch: false,
-	} as SpectrogramSettings
+export const DEFAULT_SETTINGS: SpectrogramSettings = {
+	tickVariant: 'preset',
+	colorMap: 'grayscale',
+	interpolation: 'nearest',
+	noteGuidelines: false,
+	fftSize: 4096,
+	smoothingFactor: 0,
+	lowerFrequency: 45,
+	upperFrequency: 11000,
+	scala: 'log',
+	speed: 5,
+	toneVolume: 50,
+	followPitch: false,
+	audioSource: 'microphone',
 }
 
 export type TickVariant = 'none' | 'preset' | 'notes'

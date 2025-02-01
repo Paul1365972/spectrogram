@@ -1,89 +1,97 @@
-import type { SpectrogramSettings } from './settings'
+import { get, type Writable } from 'svelte/store'
+import { audioSourcesToTargets, audioTargetsToSources, type AudioTargets } from './audio_sources'
+import { type SpectrogramSettings } from './settings'
 
 export const MAX_HISTORY = 2048
 
+const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+	autoGainControl: false,
+	echoCancellation: false,
+	noiseSuppression: false,
+	channelCount: { ideal: 1 },
+	sampleRate: { ideal: 48000 },
+}
+
 export class AudioManager {
 	private audioContext: AudioContext | null = null
-	private analyser: AnalyserNode | null = null
 	private gainNode: GainNode | null = null
 	private oscillatorNode: OscillatorNode | null = null
-	private timeBuffer: Float32Array | null = null
-	private freqBuffer: Float32Array | null = null
-	private freqBufferNormalized: Float32Array | null = null
-	private freqBufferHistory: Float32Array | null = null
-	private freqBufferHistoryOffset: number = 0
+	private microphone: AudioBuffer | null = null
+	private desktop: AudioBuffer | null = null
 	private sampleRate: number | null = null
-	private hzPerBin: number | null = null
+	private audioSources: AudioTargets = {
+		microphone: false,
+		desktop: false,
+	}
 
-	async initialize() {
-		this.audioContext = new AudioContext()
-		const stream = await navigator.mediaDevices.getUserMedia({
-			audio: {
-				autoGainControl: false,
-				echoCancellation: false,
-				noiseSuppression: false,
-			},
-			video: false,
-		})
-		const input = this.audioContext.createMediaStreamSource(stream)
-		this.analyser = this.audioContext.createAnalyser()
-		this.analyser.smoothingTimeConstant = 0
-		this.analyser.fftSize = 4096
-		input.connect(this.analyser)
+	initialize() {
+		this.audioContext = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 })
+
+		this.sampleRate = this.audioContext.sampleRate
 
 		this.gainNode = this.audioContext.createGain()
-		this.gainNode.connect(this.audioContext.destination)
 		this.gainNode.gain.value = 0.0
+		this.gainNode.connect(this.audioContext.destination)
 
 		this.oscillatorNode = this.audioContext.createOscillator()
 		this.oscillatorNode.connect(this.gainNode)
 		this.oscillatorNode.start()
+	}
 
-		this.timeBuffer = new Float32Array(this.analyser.fftSize)
-		this.freqBuffer = new Float32Array(this.analyser.frequencyBinCount)
-		this.freqBufferNormalized = new Float32Array(this.analyser.frequencyBinCount)
-		this.freqBufferHistory = new Float32Array(this.analyser.frequencyBinCount * MAX_HISTORY).fill(
-			Number.NEGATIVE_INFINITY,
-		)
+	updateSources(settings: Writable<SpectrogramSettings>) {
+		const target = audioSourcesToTargets(get(settings).audioSource)
+		if (this.audioSources.microphone && !target.microphone) {
+			this.microphone?.destroy()
+			this.microphone = null
+		}
+		if (!this.audioSources.microphone && target.microphone) {
+			navigator.mediaDevices
+				.getUserMedia({
+					audio: AUDIO_CONSTRAINTS,
+					video: false,
+				})
+				.then((stream) => {
+					this.microphone = new AudioBuffer(this.audioContext!, stream)
+				})
+				.catch((error) => {
+					settings.update((v) => {
+						v.audioSource = audioTargetsToSources({ ...target, ...{ microphone: false } })
+						return v
+					})
+					console.log(error)
+				})
+		}
+		if (this.audioSources.desktop && !target.desktop) {
+			this.desktop?.destroy()
+			this.desktop = null
+		}
+		if (!this.audioSources.desktop && target.desktop) {
+			navigator.mediaDevices
+				.getDisplayMedia({
+					audio: AUDIO_CONSTRAINTS,
+				})
+				.then((stream) => {
+					this.desktop = new AudioBuffer(this.audioContext!, stream)
+				})
+				.catch((error) => {
+					settings.update((v) => {
+						v.audioSource = audioTargetsToSources({ ...target, ...{ desktop: false } })
+						return v
+					})
+					console.log(error)
+				})
+		}
+		this.audioSources = target
 	}
 
 	update(settings: SpectrogramSettings) {
-		const analyser = this.analyser!
-
-		analyser.fftSize = settings.fftSize
-		analyser.smoothingTimeConstant = settings.smoothingFactor
-
-		const fftSize = analyser.fftSize
-		const frequencyBinCount = analyser.frequencyBinCount
-
-		if (this.timeBuffer!.length !== fftSize) {
-			this.timeBuffer = new Float32Array(fftSize)
+		for (const source of [this.desktop, this.microphone]) {
+			if (source) {
+				source.setFFTSize(settings.fftSize)
+				source.setSmoothingFactor(settings.smoothingFactor)
+				source.update()
+			}
 		}
-		if (this.freqBuffer!.length !== frequencyBinCount) {
-			this.freqBuffer = new Float32Array(frequencyBinCount)
-		}
-		if (this.freqBufferNormalized!.length !== frequencyBinCount) {
-			this.freqBufferNormalized = new Float32Array(frequencyBinCount)
-		}
-		if (this.freqBufferHistory!.length !== frequencyBinCount * MAX_HISTORY) {
-			this.freqBufferHistory = new Float32Array(frequencyBinCount * MAX_HISTORY).fill(
-				Number.NEGATIVE_INFINITY,
-			)
-		}
-
-		analyser.getFloatTimeDomainData(this.timeBuffer!)
-		// Does the FFT with a blackman window
-		analyser.getFloatFrequencyData(this.freqBuffer!)
-
-		for (let i = 0; i < this.freqBuffer!.length; i++) {
-			this.freqBufferNormalized![i] = this.decibelToPercentage(this.freqBuffer![i])
-		}
-		this.freqBufferHistory!.set(this.freqBuffer!, this.freqBufferHistoryOffset * frequencyBinCount)
-		this.freqBufferHistoryOffset! = (this.freqBufferHistoryOffset! + 1) % MAX_HISTORY
-
-		this.sampleRate = this.audioContext!.sampleRate
-		const nyquist = this.sampleRate / 2.0
-		this.hzPerBin = nyquist / frequencyBinCount
 	}
 
 	setOscillatorFrequency(freq: number) {
@@ -98,42 +106,99 @@ export class AudioManager {
 		}
 	}
 
-	getTimeBuffer() {
-		return this.timeBuffer!
+	getMicrophone() {
+		return this.microphone
 	}
 
-	getFreqBuffer() {
-		return this.freqBuffer!
+	getDesktop() {
+		return this.desktop
 	}
 
-	getFreqBufferNormalized() {
-		return this.freqBufferNormalized!
-	}
-
-	getFreqBufferHistory() {
-		return this.freqBufferHistory!
-	}
-
-	getFreqBufferHistoryOffset() {
-		return this.freqBufferHistoryOffset!
+	getPrimary() {
+		if (this.microphone) {
+			return this.microphone
+		}
+		return this.desktop
 	}
 
 	getSampleRate() {
 		return this.sampleRate!
 	}
 
-	indexToFreq(index: number): number {
-		return index * this.hzPerBin!
+	getNyquist() {
+		return this.sampleRate! / 2.0
+	}
+}
+
+export class AudioBuffer {
+	public stream: MediaStream
+	public source: MediaStreamAudioSourceNode
+	public analyser: AnalyserNode
+	public time: Float32Array
+	public freq: Float32Array
+	public freqNormalized: Float32Array
+	public history: Float32Array
+	public offset: number
+
+	constructor(audioContext: AudioContext, stream: MediaStream) {
+		this.stream = stream
+		this.source = audioContext.createMediaStreamSource(stream)
+		this.analyser = audioContext.createAnalyser()
+		this.source.connect(this.analyser)
+
+		const fftSize = this.analyser.fftSize
+		const frequencyBinCount = this.analyser.frequencyBinCount
+		this.time = new Float32Array(fftSize)
+		this.freq = new Float32Array(frequencyBinCount)
+		this.freqNormalized = new Float32Array(frequencyBinCount)
+		this.history = new Float32Array(frequencyBinCount * MAX_HISTORY).fill(Number.NEGATIVE_INFINITY)
+		this.offset = 0
 	}
 
-	freqToIndex(frequency: number): number {
-		return frequency / this.hzPerBin!
+	setSmoothingFactor(smoothingFactor: number) {
+		this.analyser.smoothingTimeConstant = smoothingFactor
 	}
 
-	// TODO Replace with configurable range or make it more intelligent
-	private decibelToPercentage(x: number) {
-		const minDecibels = -100
-		const maxDecibels = -30
-		return Math.max(0, Math.min(1, (x - minDecibels) / (maxDecibels - minDecibels)))
+	setFFTSize(fftSize: number) {
+		this.analyser.fftSize = fftSize
+		if (this.time.length !== this.analyser.fftSize) {
+			this.time = new Float32Array(this.analyser.fftSize)
+		}
+		if (this.freq.length !== this.analyser.frequencyBinCount) {
+			this.freq = new Float32Array(this.analyser.frequencyBinCount)
+		}
+		if (this.freqNormalized.length !== this.analyser.frequencyBinCount) {
+			this.freqNormalized = new Float32Array(this.analyser.frequencyBinCount)
+		}
+		if (this.history.length !== this.analyser.frequencyBinCount * MAX_HISTORY) {
+			this.history = new Float32Array(this.analyser.frequencyBinCount * MAX_HISTORY).fill(
+				Number.NEGATIVE_INFINITY,
+			)
+		}
+	}
+
+	update() {
+		this.analyser.getFloatTimeDomainData(this.time)
+		this.analyser.getFloatFrequencyData(this.freq)
+
+		const minDecibels = this.analyser.minDecibels
+		const maxDecibels = this.analyser.maxDecibels
+		for (let i = 0; i < this.freq.length; i++) {
+			this.freqNormalized[i] = Math.max(
+				0,
+				Math.min(1, (this.freq[i] - minDecibels) / (maxDecibels - minDecibels)),
+			)
+		}
+
+		this.history.set(this.freq, this.offset * this.analyser.frequencyBinCount)
+		this.offset = (this.offset + 1) % MAX_HISTORY
+	}
+
+	destroy() {
+		this.analyser.disconnect()
+		this.source.disconnect()
+		for (const track of this.stream.getTracks()) {
+			track.stop()
+		}
 	}
 }

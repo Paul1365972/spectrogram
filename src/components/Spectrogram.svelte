@@ -45,7 +45,7 @@
 		window.removeEventListener('mousedown', init)
 		window.removeEventListener('touchstart', init)
 		if (!initialized) {
-			await audioManager.initialize()
+			audioManager.initialize()
 			await estimatorManager.initialize()
 			initialized = true
 			requestAnimationFrame(render)
@@ -96,7 +96,7 @@
 			}
 			toneEnabled = true
 			updateOscillatorFrequency()
-			audioManager?.setGain(settings.volume / 100)
+			audioManager?.setGain(settings.toneVolume / 100)
 		}
 	}
 
@@ -122,6 +122,7 @@
 	}
 
 	function render() {
+		audioManager.updateSources(settingsStore)
 		settings = get(settingsStore)
 		if (!paused) {
 			audioManager.update(settings)

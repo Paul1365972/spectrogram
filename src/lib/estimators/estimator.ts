@@ -13,7 +13,11 @@ export class EstimatorManager {
 	async initialize() {}
 
 	update(settings: SpectrogramSettings) {
-		const timeBuffer = this.audioManager.getTimeBuffer()
+		const audioBuffer = this.audioManager.getPrimary()
+		if (!audioBuffer) {
+			return
+		}
+		const timeBuffer = audioBuffer.time
 		const sampleRate = this.audioManager.getSampleRate()
 
 		const { frequency: fundamentalFrequency, confidence: fundamentalConfidence } =
@@ -23,10 +27,11 @@ export class EstimatorManager {
 		if (!this.pitchDetector || this.pitchDetector.inputLength != timeBuffer.length) {
 			this.pitchDetector = PitchDetector.forFloat32Array(timeBuffer.length)
 		}
-		let [pitchyFrequency, pitchyConfidence] = this.pitchDetector.findPitch(timeBuffer, sampleRate)
+		const [pitchyFrequency, pitchyConfidence] = this.pitchDetector.findPitch(timeBuffer, sampleRate)
 
-		let lpcCoefficients = computeLPCCoefficients(timeBuffer, 10)
-		// let formants = computeLPCFormants(lpcCoefficients, sampleRate)
+		// const lpcCoefficients = computeLPCCoefficients(timeBuffer, 10)
+		const lpcCoefficients = new Float32Array([1.0])
+		// const formants = computeLPCFormants(lpcCoefficients, sampleRate)
 
 		if (this.results.length >= MAX_HISTORY) {
 			this.results.pop()
@@ -43,7 +48,7 @@ export class EstimatorManager {
 		)
 	}
 
-	getResult() {
+	getResult(): EstimatorResult | null {
 		return this.results[0]
 	}
 
