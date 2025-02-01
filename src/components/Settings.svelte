@@ -20,136 +20,136 @@
 	</button>
 
 	{#if isOpen}
-	<div class="settings-menu" role="dialog" aria-label="Settings">
-		<div class="settings-content">
-			<div class="setting">
-				<label for="audio-source">Audio Source</label>
-				<select id="audio-source" bind:value={$settings.audioSource}>
-					<option value="none">None</option>
-					<option value="microphone">Microphone</option>
-					<option value="desktop">Desktop</option>
-					<option value="both">Both</option>
-				</select>
-			</div>
+		<div class="settings-menu" role="dialog" aria-label="Settings">
+			<div class="settings-content">
+				<div class="setting">
+					<label for="audio-source">Audio Source</label>
+					<select id="audio-source" bind:value={$settings.audioSource}>
+						<option value="none">None</option>
+						<option value="microphone">Microphone</option>
+						<option value="desktop">Desktop</option>
+						<option value="both">Both</option>
+					</select>
+				</div>
 
-			<div class="setting">
-				<label for="frequency-range">Frequency Range</label>
-				<DualSlider
-					id="frequency-range"
-					minValue={20}
-					maxValue={20000}
-					lowerValue={$settings.lowerFrequency}
-					upperValue={$settings.upperFrequency}
-					defaultLowerValue={DEFAULT_SETTINGS.lowerFrequency}
-					defaultUpperValue={DEFAULT_SETTINGS.upperFrequency}
-					logarithmic={true}
-					unit="Hz"
-					onChange={(lower, upper) => {
-						$settings.lowerFrequency = lower
-						$settings.upperFrequency = upper
-					}}
-				/>
-			</div>
+				<div class="setting">
+					<label for="frequency-range">Frequency Range</label>
+					<DualSlider
+						id="frequency-range"
+						minValue={20}
+						maxValue={20000}
+						lowerValue={$settings.lowerFrequency}
+						upperValue={$settings.upperFrequency}
+						defaultLowerValue={DEFAULT_SETTINGS.lowerFrequency}
+						defaultUpperValue={DEFAULT_SETTINGS.upperFrequency}
+						logarithmic={true}
+						unit="Hz"
+						onChange={(lower, upper) => {
+							$settings.lowerFrequency = lower
+							$settings.upperFrequency = upper
+						}}
+					/>
+				</div>
 
-			<div class="setting">
-				<label for="follow-pitch"><u>F</u>ollow Pitch</label>
-				<input id="follow-pitch" type="checkbox" bind:checked={$settings.followPitch} />
-			</div>
+				<div class="setting">
+					<label for="follow-pitch"><u>F</u>ollow Pitch</label>
+					<input id="follow-pitch" type="checkbox" bind:checked={$settings.followPitch} />
+				</div>
 
-			<div class="setting">
-				<label for="tick-variant"><u>T</u>icks</label>
-				<select id="tick-variant" bind:value={$settings.tickVariant}>
-					<option value="none">None</option>
-					<option value="preset">Preset</option>
-					<option value="notes">Notes</option>
-				</select>
-			</div>
+				<div class="setting">
+					<label for="tick-variant"><u>T</u>icks</label>
+					<select id="tick-variant" bind:value={$settings.tickVariant}>
+						<option value="none">None</option>
+						<option value="preset">Preset</option>
+						<option value="notes">Notes</option>
+					</select>
+				</div>
 
-			<div class="setting">
-				<label for="note-guidelines">Note <u>G</u>uidelines</label>
-				<input id="note-guidelines" type="checkbox" bind:checked={$settings.noteGuidelines} />
-			</div>
+				<div class="setting">
+					<label for="note-guidelines">Note <u>G</u>uidelines</label>
+					<input id="note-guidelines" type="checkbox" bind:checked={$settings.noteGuidelines} />
+				</div>
 
-			<div class="setting">
-				<label for="colormap"><u>C</u>olormap</label>
-				<select id="colormap" bind:value={$settings.colorMap}>
-					<option value="grayscale">Grayscale</option>
-					<option value="inferno">Inferno</option>
-					<option value="magma">Magma</option>
-				</select>
-			</div>
+				<div class="setting">
+					<label for="colormap"><u>C</u>olormap</label>
+					<select id="colormap" bind:value={$settings.colorMap}>
+						<option value="grayscale">Grayscale</option>
+						<option value="inferno">Inferno</option>
+						<option value="magma">Magma</option>
+					</select>
+				</div>
 
-			<div class="setting">
-				<label for="interpolation">Interpolation</label>
-				<select id="interpolation" bind:value={$settings.interpolation}>
-					<option value="nearest">Nearest</option>
-					<option value="linear">Linear</option>
-				</select>
-			</div>
+				<div class="setting">
+					<label for="interpolation">Interpolation</label>
+					<select id="interpolation" bind:value={$settings.interpolation}>
+						<option value="nearest">Nearest</option>
+						<option value="linear">Linear</option>
+					</select>
+				</div>
 
-			<div class="setting">
-				<label for="speed">Speed</label>
-				<input type="range" id="speed" min="1" max="10" step="0.1" bind:value={$settings.speed} />
-				<span>{$settings.speed} px/f</span>
-			</div>
+				<div class="setting">
+					<label for="speed">Speed</label>
+					<input type="range" id="speed" min="1" max="10" step="0.1" bind:value={$settings.speed} />
+					<span>{$settings.speed} px/f</span>
+				</div>
 
-			<div class="setting">
-				<label for="scala">Scale</label>
-				<select id="scala" bind:value={$settings.scala}>
-					<option value="log">Logarithmic</option>
-					<option value="linear">Linear</option>
-					<option value="mel">Mel</option>
-				</select>
-			</div>
+				<div class="setting">
+					<label for="scala">Scale</label>
+					<select id="scala" bind:value={$settings.scala}>
+						<option value="log">Logarithmic</option>
+						<option value="linear">Linear</option>
+						<option value="mel">Mel</option>
+					</select>
+				</div>
 
-			<div class="setting">
-				<label for="fft-size">FFT Size</label>
-				<select id="fft-size" bind:value={$settings.fftSize}>
-					<option value={1024}>1024 Points</option>
-					<option value={2048}>2048 Points</option>
-					<option value={4096}>4096 Points</option>
-					<option value={8192}>8192 Points</option>
-					<option value={16384}>16384 Points</option>
-				</select>
-				<span class="info-text">(~{(($settings.fftSize / 48000) * 1000).toFixed(1)} ms)</span>
-			</div>
+				<div class="setting">
+					<label for="fft-size">FFT Size</label>
+					<select id="fft-size" bind:value={$settings.fftSize}>
+						<option value={1024}>1024 Points</option>
+						<option value={2048}>2048 Points</option>
+						<option value={4096}>4096 Points</option>
+						<option value={8192}>8192 Points</option>
+						<option value={16384}>16384 Points</option>
+					</select>
+					<span class="info-text">(~{(($settings.fftSize / 48000) * 1000).toFixed(1)} ms)</span>
+				</div>
 
-			<div class="setting">
-				<label for="smoothing-factor">FFT Smoothing</label>
-				<input
-					type="range"
-					id="smoothing-factor"
-					min="0"
-					max="1"
-					step="0.01"
-					bind:value={$settings.smoothingFactor}
-				/>
-				<span>{Math.round($settings.smoothingFactor * 100)}%</span>
-			</div>
+				<div class="setting">
+					<label for="smoothing-factor">FFT Smoothing</label>
+					<input
+						type="range"
+						id="smoothing-factor"
+						min="0"
+						max="1"
+						step="0.01"
+						bind:value={$settings.smoothingFactor}
+					/>
+					<span>{Math.round($settings.smoothingFactor * 100)}%</span>
+				</div>
 
-			<div class="setting">
-				<label for="volume">Tone Volume</label>
-				<input
-					type="range"
-					id="volume"
-					min="0"
-					max="100"
-					step="1"
-					bind:value={$settings.toneVolume}
-				/>
-				<span>{$settings.toneVolume}%</span>
-			</div>
+				<div class="setting">
+					<label for="volume">Tone Volume</label>
+					<input
+						type="range"
+						id="volume"
+						min="0"
+						max="100"
+						step="1"
+						bind:value={$settings.toneVolume}
+					/>
+					<span>{$settings.toneVolume}%</span>
+				</div>
 
-			<div class="setting">
-				<button
-					class="reset-button"
-					on:click={() => ($settings = structuredClone(DEFAULT_SETTINGS))}
-				>
-					Reset All
-				</button>
+				<div class="setting">
+					<button
+						class="reset-button"
+						on:click={() => ($settings = structuredClone(DEFAULT_SETTINGS))}
+					>
+						Reset All
+					</button>
+				</div>
 			</div>
 		</div>
-	</div>
 	{/if}
 </div>
 

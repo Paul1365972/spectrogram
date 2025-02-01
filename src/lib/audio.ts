@@ -55,8 +55,8 @@ export class AudioManager {
 				})
 				.catch((error) => {
 					settings.update((v) => {
-						v.audioSource = audioTargetsToSources({ ...target, ...{ microphone: false } })
-						return v
+						const newSource = audioTargetsToSources({ ...target, ...{ microphone: false } })
+						return { ...v, ...{ audioSource: newSource } }
 					})
 					console.log(error)
 				})
@@ -75,8 +75,8 @@ export class AudioManager {
 				})
 				.catch((error) => {
 					settings.update((v) => {
-						v.audioSource = audioTargetsToSources({ ...target, ...{ desktop: false } })
-						return v
+						const newSource = audioTargetsToSources({ ...target, ...{ desktop: false } })
+						return { ...v, ...{ audioSource: newSource } }
 					})
 					console.log(error)
 				})
@@ -86,11 +86,9 @@ export class AudioManager {
 
 	update(settings: SpectrogramSettings) {
 		for (const source of [this.desktop, this.microphone]) {
-			if (source) {
-				source.setFFTSize(settings.fftSize)
-				source.setSmoothingFactor(settings.smoothingFactor)
-				source.update()
-			}
+			source?.setFFTSize(settings.fftSize)
+			source?.setSmoothingFactor(settings.smoothingFactor)
+			source?.update()
 		}
 	}
 
@@ -114,11 +112,18 @@ export class AudioManager {
 		return this.desktop
 	}
 
-	getPrimary() {
+	getAnalysisBuffer() {
 		if (this.microphone) {
 			return this.microphone
 		}
 		return this.desktop
+	}
+
+	getDisplayBuffer() {
+		if (this.desktop) {
+			return this.desktop
+		}
+		return this.microphone
 	}
 
 	getSampleRate() {

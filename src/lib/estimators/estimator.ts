@@ -13,7 +13,7 @@ export class EstimatorManager {
 	async initialize() {}
 
 	update(settings: SpectrogramSettings) {
-		const audioBuffer = this.audioManager.getPrimary()
+		const audioBuffer = this.audioManager.getAnalysisBuffer()
 		if (!audioBuffer) {
 			return
 		}
@@ -21,8 +21,8 @@ export class EstimatorManager {
 		const sampleRate = this.audioManager.getSampleRate()
 
 		const { frequency: fundamentalFrequency, confidence: fundamentalConfidence } =
-			findFundamentalFrequency(this.audioManager, 8)
-		const frequencyMaximas = findMaximumFrequencies(this.audioManager, 3, settings)
+			findFundamentalFrequency(this.audioManager, audioBuffer, 8)
+		const frequencyMaximas = findMaximumFrequencies(this.audioManager, audioBuffer, 3)
 
 		if (!this.pitchDetector || this.pitchDetector.inputLength != timeBuffer.length) {
 			this.pitchDetector = PitchDetector.forFloat32Array(timeBuffer.length)

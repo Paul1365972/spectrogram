@@ -274,9 +274,9 @@ export class Renderer {
 	render(settings: SpectrogramSettings, mousePosition: [number, number], paused: boolean) {
 		this.handleResize()
 
-		const primaryBuffer = this.audioManager.getPrimary()
-		if (!paused && primaryBuffer) {
-			this.webglSpectrogram.update(primaryBuffer.freqNormalized)
+		const displayBuffer = this.audioManager.getDisplayBuffer()
+		if (!paused && displayBuffer) {
+			this.webglSpectrogram.update(displayBuffer.freqNormalized)
 		}
 		this.webglSpectrogram.render(settings, this.width, this.height)
 
@@ -321,8 +321,8 @@ export class Renderer {
 			}
 		}
 
-		if (primaryBuffer) {
-			this.renderMouse(ctx, settings, primaryBuffer, mousePosition)
+		if (displayBuffer) {
+			this.renderMouse(ctx, settings, displayBuffer, mousePosition)
 		}
 
 		if (estimator) {
