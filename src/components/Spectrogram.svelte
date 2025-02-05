@@ -31,19 +31,19 @@
 		renderer = new Renderer(canvas, audioManager, estimatorManager)
 
 		window.addEventListener('mousedown', init)
-		window.addEventListener('touchstart', init)
+		window.addEventListener('touchend', init)
 		window.addEventListener('keydown', handleKeydown)
 
 		return () => {
 			window.removeEventListener('mousedown', init)
-			window.removeEventListener('touchstart', init)
+			window.removeEventListener('touchend', init)
 			window.removeEventListener('keydown', handleKeydown)
 		}
 	})
 
 	async function init() {
 		window.removeEventListener('mousedown', init)
-		window.removeEventListener('touchstart', init)
+		window.removeEventListener('touchend', init)
 		if (!initialized) {
 			audioManager.initialize()
 			await estimatorManager.initialize()
