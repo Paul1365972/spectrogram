@@ -39,6 +39,12 @@ export class AudioManager {
 	}
 
 	updateSources(settings: Writable<SpectrogramSettings>) {
+		function reset(updated: any) {
+			settings.update((v) => {
+				const newSource = audioTargetsToSources({ ...target, ...updated })
+				return { ...v, ...{ audioSource: newSource } }
+			})
+		}
 		const target = audioSourcesToTargets(get(settings).audioSource)
 		if (this.audioSources.microphone && !target.microphone) {
 			this.microphone?.destroy()
@@ -54,10 +60,7 @@ export class AudioManager {
 					this.microphone = new AudioBuffer(this.audioContext!, stream)
 				})
 				.catch((error) => {
-					settings.update((v) => {
-						const newSource = audioTargetsToSources({ ...target, ...{ microphone: false } })
-						return { ...v, ...{ audioSource: newSource } }
-					})
+					reset({ microphone: false })
 					console.log(error)
 				})
 		}
@@ -66,20 +69,22 @@ export class AudioManager {
 			this.desktop = null
 		}
 		if (!this.audioSources.desktop && target.desktop) {
-			navigator.mediaDevices
-				.getDisplayMedia({
-					audio: AUDIO_CONSTRAINTS,
-				})
-				.then((stream) => {
-					this.desktop = new AudioBuffer(this.audioContext!, stream)
-				})
-				.catch((error) => {
-					settings.update((v) => {
-						const newSource = audioTargetsToSources({ ...target, ...{ desktop: false } })
-						return { ...v, ...{ audioSource: newSource } }
+			if (navigator.mediaDevices.getDisplayMedia == undefined) {
+				reset({ desktop: false })
+				console.log('getDisplayMedia not supported')
+			} else {
+				navigator.mediaDevices
+					.getDisplayMedia({
+						audio: AUDIO_CONSTRAINTS,
 					})
-					console.log(error)
-				})
+					.then((stream) => {
+						this.desktop = new AudioBuffer(this.audioContext!, stream)
+					})
+					.catch((error) => {
+						reset({ desktop: false })
+						console.log(error)
+					})
+			}
 		}
 		this.audioSources = target
 	}
