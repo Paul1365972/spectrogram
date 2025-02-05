@@ -323,6 +323,9 @@ export class SpectrogramRenderer {
 			this.width = this.canvas.width = width
 			this.height = this.canvas.height = height
 		}
+		if (width == 0 || height == 0 || this.frequencyBinCount <= 0) {
+			return
+		}
 
 		this.gl.viewport(0, 0, this.width, this.height)
 		this.gl.clear(this.gl.COLOR_BUFFER_BIT)
