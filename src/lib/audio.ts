@@ -1,6 +1,7 @@
 import { get, type Writable } from 'svelte/store'
 import { audioSourcesToTargets, audioTargetsToSources, type AudioTargets } from './audio_sources'
 import { type SpectrogramSettings } from './settings'
+import { FFT } from './estimators/fft'
 
 export const MAX_HISTORY = 2048
 
@@ -204,7 +205,12 @@ export class AudioBuffer {
 
 	update() {
 		this.analyser.getFloatTimeDomainData(this.time)
-		this.analyser.getFloatFrequencyData(this.freq)
+		const preemph = new Float32Array(this.time)
+		for (let i = 1; i < preemph.length; i++) {
+			preemph[i] = this.time[i] - 0 * this.time[i - 1]
+		}
+		this.freq = new FFT(preemph.length).fft(preemph)
+		//this.analyser.getFloatFrequencyData(this.freq)
 
 		for (let i = 0; i < this.freq.length; i++) {
 			this.freqNormalized[i] = Math.max(
