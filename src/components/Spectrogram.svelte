@@ -137,10 +137,11 @@
 					const currentMiddle = settings.lowerFrequency * Math.SQRT2
 					const currentSpread = settings.upperFrequency / settings.lowerFrequency / 2
 					if (
-						Math.abs(currentMiddle / frequency - 1) > 0.12 ||
+						currentMiddle / frequency > 1.12 ||
+						frequency / currentMiddle > 1.12 ||
 						currentSpread >= 1.1 ||
 						currentSpread <= 0.9 ||
-						momentum >= 0.01
+						momentum >= 0.05
 					) {
 						$settingsStore.lowerFrequency =
 							settings.lowerFrequency * 0.9 + (frequency / Math.SQRT2) * 0.1
