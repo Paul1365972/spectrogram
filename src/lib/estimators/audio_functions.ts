@@ -1,3 +1,14 @@
+export function identityWindow(length: number) {
+	const window = new Float32Array(length)
+
+	for (let n = 0; n < length; n++) {
+		// Hanning window equation: w(n) = 0.5 - 0.5 * cos(2π * n / (N-1)))
+		window[n] = 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (length - 1))
+	}
+
+	return window
+}
+
 export function blackmanWindow(length: number) {
 	const window = new Float32Array(length)
 

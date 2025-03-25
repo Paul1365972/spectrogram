@@ -2,6 +2,8 @@ import { get, type Writable } from 'svelte/store'
 import { audioSourcesToTargets, audioTargetsToSources, type AudioTargets } from './audio_sources'
 import { type SpectrogramSettings } from './settings'
 import { FFT } from './estimators/fft'
+import { apply, blackmanWindow } from './estimators/audio_functions'
+import { preEmphasis } from './estimators/audio_filters'
 
 export const MAX_HISTORY = 2048
 
@@ -92,9 +94,7 @@ export class AudioManager {
 
 	update(settings: SpectrogramSettings) {
 		for (const source of [this.desktop, this.microphone]) {
-			source?.setFFTSize(settings.fftSize)
-			source?.setSmoothingFactor(settings.smoothingFactor)
-			source?.update()
+			source?.update(settings)
 		}
 	}
 
@@ -152,6 +152,8 @@ export class AudioBuffer {
 	public offset: number
 	public minDecibels: number
 	public maxDecibels: number
+	private fft: FFT
+	private window: Float32Array
 
 	constructor(audioContext: AudioContext, stream: MediaStream) {
 		this.stream = stream
@@ -168,10 +170,8 @@ export class AudioBuffer {
 		this.freqNormalized = new Float32Array(frequencyBinCount)
 		this.history = new Float32Array(frequencyBinCount * MAX_HISTORY).fill(Number.NEGATIVE_INFINITY)
 		this.offset = 0
-	}
-
-	setSmoothingFactor(smoothingFactor: number) {
-		this.analyser.smoothingTimeConstant = smoothingFactor
+		this.fft = new FFT(fftSize)
+		this.window = blackmanWindow(fftSize)
 	}
 
 	setFFTSize(fftSize: number) {
@@ -201,17 +201,24 @@ export class AudioBuffer {
 			}
 			this.history = newHistory
 		}
+		if (this.fft.size !== this.analyser.fftSize) {
+			this.fft = new FFT(this.analyser.fftSize)
+		}
+		if (this.window.length !== this.analyser.fftSize) {
+			this.window = blackmanWindow(this.analyser.fftSize)
+		}
 	}
 
-	update() {
-		this.analyser.getFloatTimeDomainData(this.time)
-		const preemph = new Float32Array(this.time)
-		for (let i = 1; i < preemph.length; i++) {
-			preemph[i] = this.time[i] - 0 * this.time[i - 1]
-		}
-		this.freq = new FFT(preemph.length).fft(preemph)
-		//this.analyser.getFloatFrequencyData(this.freq)
+	update(settings: SpectrogramSettings) {
+		this.setFFTSize(settings.fftSize)
+		this.analyser.smoothingTimeConstant = settings.smoothingFactor
 
+		this.analyser.getFloatTimeDomainData(this.time)
+		const boostFactor = Math.pow(10, settings.inputBoost / 20)
+		const signal = this.time.map((x) => x * boostFactor)
+		preEmphasis(signal, settings.preEmphasis)
+		apply(signal, this.window)
+		this.freq = this.fft.powerSpectrum(signal).map((power) => 10 * Math.log10(power))
 		for (let i = 0; i < this.freq.length; i++) {
 			this.freqNormalized[i] = Math.max(
 				0,

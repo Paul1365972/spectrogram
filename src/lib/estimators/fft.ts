@@ -1,5 +1,3 @@
-import { blackmanWindow } from './window_functions'
-
 export class FFT {
 	readonly size: number
 	private readonly reversedBits: Uint32Array
@@ -7,7 +5,6 @@ export class FFT {
 	private readonly imag: Float32Array
 	private readonly twiddleReal: Float32Array
 	private readonly twiddleImag: Float32Array
-	private readonly window: Float32Array
 
 	constructor(size: number) {
 		if (size & (size - 1)) {
@@ -34,8 +31,6 @@ export class FFT {
 			this.twiddleReal[i] = Math.cos(angle)
 			this.twiddleImag[i] = Math.sin(angle)
 		}
-
-		this.window = blackmanWindow(size)
 	}
 
 	private reverseBits(num: number, bits: number): number {
@@ -46,14 +41,14 @@ export class FFT {
 		return reversed
 	}
 
-	public fft(input: Float32Array): Float32Array {
-		if (input.length !== this.size) {
+	public powerSpectrum(signal: Float32Array): Float32Array {
+		if (signal.length !== this.size) {
 			throw new Error('Input size must match FFT size')
 		}
 
 		for (let i = 0; i < this.size; i++) {
 			const revIndex = this.reversedBits[i]
-			this.real[i] = input[revIndex] * this.window[revIndex]
+			this.real[i] = signal[revIndex]
 		}
 		this.imag.fill(0)
 
@@ -89,11 +84,21 @@ export class FFT {
 		}
 
 		const output = new Float32Array(this.size / 2)
-		const scale = 1 / this.size
+		const scaleSquared = 1 / (this.size * this.size)
 		for (let i = 0; i < this.size / 2; i++) {
-			const power = (this.real[i] * this.real[i] + this.imag[i] * this.imag[i]) * scale
-			output[i] = 10 * Math.log10(power)
+			const re = this.real[i]
+			const im = this.imag[i]
+			output[i] = (re * re + im * im) * scaleSquared
 		}
 		return output
 	}
+}
+
+// Parabolic interpolation
+export function refinePeak(array: Float32Array, index: number) {
+	const a = array[Math.max(0, index - 1)]
+	const b = array[index]
+	const c = array[Math.min(array.length - 1, index + 1)]
+	const p = (0.5 * (a - c)) / (a - 2.0 * b + c)
+	return { index: index + p, value: b - 0.25 * (a - c) * p }
 }
