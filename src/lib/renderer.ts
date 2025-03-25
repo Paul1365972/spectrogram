@@ -160,6 +160,24 @@ export class Renderer {
 		}
 	}
 
+	renderTimeGuidelines(ctx: CanvasRenderingContext2D, settings: SpectrogramSettings) {
+		const [r, g, b] = getTextColor(settings.colorMap)
+
+		for (let i = 1; ; i++) {
+			const dt = i * 0.2
+			const x = Math.round(this.width - dt * settings.speed * 60)
+			if (x < 0) {
+				break
+			}
+			if (i % 5 == 0) {
+				ctx.fillStyle = `rgba(${r},${g},${b},0.25)`
+			} else {
+				ctx.fillStyle = `rgba(${r},${g},${b},0.1)`
+			}
+			ctx.fillRect(x - 1, 0, 2, this.height)
+		}
+	}
+
 	renderNoteFeedback(ctx: CanvasRenderingContext2D, frequency: number | null) {
 		const boxWidth = 200
 		const boxHeight = 120
@@ -301,6 +319,10 @@ export class Renderer {
 
 		if (settings.noteGuidelines) {
 			this.renderNoteGuidelines(ctx, settings)
+		}
+
+		if (settings.timeGuidelines) {
+			this.renderTimeGuidelines(ctx, settings)
 		}
 
 		if (settings.tickVariant === 'preset') {
