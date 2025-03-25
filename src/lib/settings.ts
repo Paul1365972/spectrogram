@@ -3,12 +3,15 @@ import type { ColorMap } from './color_maps'
 import type { ScalaVariant } from './scales'
 
 export type SpectrogramSettings = {
+	inputBoost: number
 	tickVariant: TickVariant
 	colorMap: ColorMap
 	interpolation: Interpolation
 	noteGuidelines: boolean
+	timeGuidelines: boolean
 	fftSize: 1024 | 2048 | 4096 | 8192 | 16384
 	smoothingFactor: number
+	preEmphasis: number
 	lowerFrequency: number
 	upperFrequency: number
 	scala: ScalaVariant
@@ -19,12 +22,15 @@ export type SpectrogramSettings = {
 }
 
 export const DEFAULT_SETTINGS: SpectrogramSettings = {
+	inputBoost: 0,
 	tickVariant: 'preset',
 	colorMap: 'grayscale',
 	interpolation: 'nearest',
 	noteGuidelines: false,
+	timeGuidelines: false,
 	fftSize: 4096,
 	smoothingFactor: 0,
+	preEmphasis: 0,
 	lowerFrequency: 45,
 	upperFrequency: 11000,
 	scala: 'log',

@@ -33,6 +33,19 @@
 				</div>
 
 				<div class="setting">
+					<label for="input-volume">Input Volume</label>
+					<input
+						type="range"
+						id="input-volume"
+						min="0"
+						max="18"
+						step="1"
+						bind:value={$settings.inputBoost}
+					/>
+					<span>+{$settings.inputBoost} dB</span>
+				</div>
+
+				<div class="setting">
 					<label for="frequency-range">Frequency Range</label>
 					<DualSlider
 						id="frequency-range"
@@ -71,6 +84,11 @@
 				</div>
 
 				<div class="setting">
+					<label for="time-guidelines">Time Guidelines</label>
+					<input id="time-guidelines" type="checkbox" bind:checked={$settings.timeGuidelines} />
+				</div>
+
+				<div class="setting">
 					<label for="colormap"><u>C</u>olormap</label>
 					<select id="colormap" bind:value={$settings.colorMap}>
 						<option value="grayscale">Grayscale</option>
@@ -100,6 +118,19 @@
 						<option value="linear">Linear</option>
 						<option value="mel">Mel</option>
 					</select>
+				</div>
+
+				<div class="setting">
+					<label for="pre-emphasis">Pre-Emphasis</label>
+					<input
+						type="range"
+						id="pre-emphasis"
+						min="0"
+						max="1"
+						step="0.01"
+						bind:value={$settings.preEmphasis}
+					/>
+					<span>{$settings.preEmphasis.toFixed(2)}</span>
 				</div>
 
 				<div class="setting">
