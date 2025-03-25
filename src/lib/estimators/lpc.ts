@@ -1,8 +1,5 @@
 import { Complex } from '../math/complex'
-import { apply, hammingWindow, hannWindow } from './window_functions'
-
-type FloatArray = Float32Array | Float64Array
-const FloatArray = Float64Array
+import { apply, hammingWindow } from './audio_functions'
 
 export interface Formant {
 	frequency: number
@@ -10,14 +7,7 @@ export interface Formant {
 	dB: number
 }
 
-function preEmphasis(signal: FloatArray) {
-	const alpha = 0.95
-	for (let i = signal.length - 1; i > 0; i--) {
-		signal[i] = signal[i] - alpha * signal[i - 1]
-	}
-}
-
-function normalizeSignal(signal: FloatArray) {
+function normalizeSignal(signal: Float32Array) {
 	const N = signal.length
 
 	let sum = 0
@@ -30,9 +20,9 @@ function normalizeSignal(signal: FloatArray) {
 	}
 }
 
-function computeAutocorrelation(signal: FloatArray, lpcOrder: number) {
+function computeAutocorrelation(signal: Float32Array, lpcOrder: number) {
 	const N = signal.length
-	const R = new FloatArray(lpcOrder + 1)
+	const R = new Float32Array(lpcOrder + 1)
 
 	for (let k = 0; k <= lpcOrder; k++) {
 		for (let n = 0; n < N - k; n++) {
@@ -44,9 +34,9 @@ function computeAutocorrelation(signal: FloatArray, lpcOrder: number) {
 	return R
 }
 
-function levinsonDurbin(R: FloatArray, lpcOrder: number) {
-	const a = new FloatArray(lpcOrder + 1)
-	const oldA = new FloatArray(lpcOrder + 1)
+function levinsonDurbin(R: Float32Array, lpcOrder: number) {
+	const a = new Float32Array(lpcOrder + 1)
+	const oldA = new Float32Array(lpcOrder + 1)
 
 	// Initialize
 	a[0] = 1.0
@@ -80,15 +70,15 @@ function levinsonDurbin(R: FloatArray, lpcOrder: number) {
 	return a
 }
 
-function evaluatePolynomial(z: Complex, coefficients: FloatArray): Complex {
+function evaluatePolynomial(z: Complex, coefficients: Float32Array): Complex {
 	let result = new Complex(0, 0)
 	for (let i = 0; i < coefficients.length; i++) {
-		result = result.mul(z).add(new Complex(coefficients[i], 0))
+		result = result.div(z).add(new Complex(coefficients[coefficients.length - 1 - i], 0))
 	}
 	return result
 }
 
-function durandKerner(coefficients: FloatArray): Complex[] {
+function durandKerner(coefficients: Float32Array): Complex[] {
 	const n = coefficients.length - 1
 	let roots: Complex[] = []
 
@@ -117,8 +107,8 @@ function durandKerner(coefficients: FloatArray): Complex[] {
 
 			const offset = numerator.div(denominator)
 			let newRoot = roots[i].sub(offset)
+			roots[i] = newRoot
 			if (newRoot.isFinite()) {
-				roots[i] = newRoot
 				const diff = offset.magnitude()
 				maxDiff = Math.max(maxDiff, diff)
 			}
@@ -154,8 +144,8 @@ function extractFormants(roots: Complex[], sampleRate: number) {
 	//)
 }
 
-function negateCoefficients(coefficients: FloatArray) {
-	let result = new FloatArray(coefficients.length)
+function negateCoefficients(coefficients: Float32Array) {
+	let result = new Float32Array(coefficients.length)
 	result[0] = coefficients[0]
 	for (let i = 1; i < coefficients.length; i++) {
 		result[i] = -coefficients[i]
@@ -163,9 +153,9 @@ function negateCoefficients(coefficients: FloatArray) {
 	return result
 }
 
-export function computeLPCCoefficients(inputSignal: FloatArray, lpcOrder: number) {
-	const signal = new FloatArray(inputSignal)
-	preEmphasis(signal)
+export function computeLPCCoefficients(signal: Float32Array, sampleRate: number, lpcOrder: number) {
+	signal = signal.slice(-1024)
+	//preEmphasis(signal, 0.97)
 	apply(signal, hammingWindow(signal.length))
 	normalizeSignal(signal)
 	const R = computeAutocorrelation(signal, lpcOrder)
@@ -174,14 +164,14 @@ export function computeLPCCoefficients(inputSignal: FloatArray, lpcOrder: number
 	return new Float32Array(polynomialCoefficients)
 }
 
-export function computeLPCFormants(coefficients: FloatArray, sampleRate: number) {
+export function computeLPCFormants(coefficients: Float32Array, sampleRate: number) {
 	const roots = durandKerner(coefficients)
 	const formants = extractFormants(roots, sampleRate)
 	return formants
 }
 
 export function computeLPCResonance(
-	coefficients: FloatArray,
+	coefficients: Float32Array,
 	frequency: number,
 	sampleRate: number,
 ) {
