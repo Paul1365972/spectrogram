@@ -1,7 +1,7 @@
-import { AudioBuffer, MAX_HISTORY, type AudioManager } from './audio'
+import { AudioBuffer, MAX_HISTORY, type AudioManager } from '../audio'
 import { COLOR_MAPS, getColorMap } from './color_maps'
-import type { SpectrogramSettings } from './settings'
-import { SCALA_VARIANTS } from './scales'
+import type { SpectrogramSettings } from '../settings'
+import { SCALA_VARIANTS } from '../scales'
 
 const SPECTROGRAM_WIDTH = MAX_HISTORY
 

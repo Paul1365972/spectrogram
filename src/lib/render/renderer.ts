@@ -1,9 +1,9 @@
 import { SpectrogramRenderer } from './spectrogram_renderer'
-import type { SpectrogramSettings } from './settings'
-import { AudioBuffer, AudioManager, MAX_HISTORY } from './audio'
+import type { SpectrogramSettings } from '../settings'
+import { AudioBuffer, AudioManager, MAX_HISTORY } from '../audio'
 import { getTextColor } from './color_maps'
-import { inverseScale, scale, NOTES, nearestNote } from './scales'
-import { type AnalyzerManager } from './analyzer/analyzer'
+import { inverseScale, scale, NOTES, nearestNote } from '../scales'
+import { type AnalyzerManager } from '../analyzer/analyzer'
 
 export class Renderer {
 	private webglSpectrogram: SpectrogramRenderer

@@ -2,13 +2,13 @@
 	import { onMount } from 'svelte'
 	import { get } from 'svelte/store'
 	import { AudioManager } from '../lib/audio'
-	import { Renderer } from '../lib/renderer'
+	import { Renderer } from '../lib/render/renderer'
 	import { scale } from '../lib/scales'
 	import { settings as settingsStore } from '../lib/store'
 	import { AnalyzerManager } from '../lib/analyzer/analyzer'
-	import { smoothPitches } from '../lib/pitch_smoothing'
+	import { PitchTracker } from '../lib/pitch_tracker'
 	import { TICK_VARIANTS } from '../lib/settings'
-	import { COLOR_MAPS } from '../lib/color_maps'
+	import { COLOR_MAPS } from '../lib/render/color_maps'
 
 	let canvas: HTMLCanvasElement
 
@@ -23,12 +23,13 @@
 	let toneEnabled: boolean = false
 	let mousePosition: [number, number] = [0, 0]
 
-	let momentum: number = 0
+	let pitchTracker: PitchTracker
 
 	onMount(() => {
 		audioManager = new AudioManager()
 		analyzerManager = new AnalyzerManager(audioManager)
 		renderer = new Renderer(canvas, audioManager, analyzerManager)
+		pitchTracker = new PitchTracker()
 
 		window.addEventListener('mousedown', init)
 		window.addEventListener('touchend', init)
@@ -127,31 +128,14 @@
 		if (!paused) {
 			audioManager.update(settings)
 			analyzerManager.update(settings)
-			if (settings.followPitch && !toneEnabled) {
-				const pitches = analyzerManager
-					.getResults()
-					.slice(0, 120)
-					.map((item) => (item.isPitchyValid() ? item.pitchyFrequency : null))
-				const frequency = smoothPitches(pitches)
-				if (frequency) {
-					const currentMiddle = settings.lowerFrequency * Math.SQRT2
-					const currentSpread = settings.upperFrequency / settings.lowerFrequency / 2
-					if (
-						currentMiddle / frequency > 1.12 ||
-						frequency / currentMiddle > 1.12 ||
-						currentSpread >= 1.1 ||
-						currentSpread <= 0.9 ||
-						momentum >= 0.05
-					) {
-						$settingsStore.lowerFrequency =
-							settings.lowerFrequency * 0.9 + (frequency / Math.SQRT2) * 0.1
-						$settingsStore.upperFrequency =
-							settings.upperFrequency * 0.9 + frequency * Math.SQRT2 * 0.1
-						momentum =
-							momentum * 0.9 +
-							Math.abs((settings.lowerFrequency * Math.SQRT2) / frequency - 1) * 0.1
-					}
-				}
+			const frequencyUpdate = pitchTracker.updateFrequencyWindow(
+				analyzerManager.getResults(),
+				settings,
+				toneEnabled,
+			)
+			if (frequencyUpdate) {
+				$settingsStore.lowerFrequency = frequencyUpdate.lowerFrequency!
+				$settingsStore.upperFrequency = frequencyUpdate.upperFrequency!
 			}
 		}
 		renderer!.render(settings, mousePosition, paused)

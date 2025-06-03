@@ -1,5 +1,5 @@
 import type { AudioSources } from './audio_sources'
-import type { ColorMap } from './color_maps'
+import type { ColorMap } from './render/color_maps'
 import type { ScalaVariant } from './scales'
 
 export type SpectrogramSettings = {
