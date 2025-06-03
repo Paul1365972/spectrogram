@@ -11,7 +11,7 @@ export function refinePeak(array: ArrayLike<number>, index: number) {
 }
 
 // Greedily try to find the maximas
-export function findMaximumFrequencies(
+export function findLoudestFrequencies(
 	audioManager: AudioManager,
 	audioBuffer: AudioBuffer,
 	amount: number,

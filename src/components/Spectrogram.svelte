@@ -5,7 +5,7 @@
 	import { Renderer } from '../lib/renderer'
 	import { scale } from '../lib/scales'
 	import { settings as settingsStore } from '../lib/store'
-	import { EstimatorManager } from '../lib/estimators/estimator'
+	import { AnalyzerManager } from '../lib/analyzer/analyzer'
 	import { smoothPitches } from '../lib/pitch_smoothing'
 	import { TICK_VARIANTS } from '../lib/settings'
 	import { COLOR_MAPS } from '../lib/color_maps'
@@ -17,7 +17,7 @@
 	let paused = false
 
 	let audioManager: AudioManager
-	let estimatorManager: EstimatorManager
+	let analyzerManager: AnalyzerManager
 	let renderer: Renderer
 
 	let toneEnabled: boolean = false
@@ -27,8 +27,8 @@
 
 	onMount(() => {
 		audioManager = new AudioManager()
-		estimatorManager = new EstimatorManager(audioManager)
-		renderer = new Renderer(canvas, audioManager, estimatorManager)
+		analyzerManager = new AnalyzerManager(audioManager)
+		renderer = new Renderer(canvas, audioManager, analyzerManager)
 
 		window.addEventListener('mousedown', init)
 		window.addEventListener('touchend', init)
@@ -46,7 +46,7 @@
 		window.removeEventListener('touchend', init)
 		if (!initialized) {
 			audioManager.initialize()
-			await estimatorManager.initialize()
+			await analyzerManager.initialize()
 			initialized = true
 			requestAnimationFrame(render)
 		}
@@ -126,11 +126,11 @@
 		settings = get(settingsStore)
 		if (!paused) {
 			audioManager.update(settings)
-			estimatorManager.update(settings)
+			analyzerManager.update(settings)
 			if (settings.followPitch && !toneEnabled) {
-				const pitches = estimatorManager
+				const pitches = analyzerManager
 					.getResults()
-					.slice(0, 128)
+					.slice(0, 120)
 					.map((item) => (item.isPitchyValid() ? item.pitchyFrequency : null))
 				const frequency = smoothPitches(pitches)
 				if (frequency) {

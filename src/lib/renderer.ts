@@ -3,19 +3,17 @@ import type { SpectrogramSettings } from './settings'
 import { AudioBuffer, AudioManager, MAX_HISTORY } from './audio'
 import { getTextColor } from './color_maps'
 import { inverseScale, scale, NOTES, nearestNote } from './scales'
-import { type EstimatorManager } from './estimators/estimator'
-import { computeLPCResonance } from './estimators/lpc'
+import { type AnalyzerManager } from './analyzer/analyzer'
 
 export class Renderer {
 	private webglSpectrogram: SpectrogramRenderer
 	private width: number
 	private height: number
-	private test: (number | null)[] = []
 
 	constructor(
 		private canvas: HTMLCanvasElement,
 		private audioManager: AudioManager,
-		private estimatorManager: EstimatorManager,
+		private analyzerManager: AnalyzerManager,
 	) {
 		this.webglSpectrogram = new SpectrogramRenderer(audioManager)
 
@@ -114,37 +112,6 @@ export class Renderer {
 			ctx.moveTo(prevX, prevY)
 			ctx.lineTo(currX, currY)
 		}
-		ctx.stroke()
-	}
-
-	drawResonanceLine(ctx: CanvasRenderingContext2D, settings: SpectrogramSettings, color: string) {
-		const x = this.width - 60
-		ctx.strokeStyle = color
-		ctx.lineCap = 'round'
-		ctx.lineJoin = 'round'
-		ctx.lineWidth = 4
-		ctx.beginPath()
-
-		const estimatorResult = this.estimatorManager.getResult()
-		if (!estimatorResult) {
-			return
-		}
-		const { lpcCoefficients } = estimatorResult
-		const sampleRate = this.audioManager.getSampleRate()
-
-		for (let y = 0; y < this.height; y++) {
-			const frequency = scale(1.0 - y / this.height, settings)
-
-			const resonance = computeLPCResonance(lpcCoefficients, frequency, sampleRate)
-			const db = resonance
-			const x = db * 100
-
-			if (y === 0) {
-				ctx.moveTo(this.width - 10 - x, y)
-			}
-			ctx.lineTo(this.width - 10 - x, y)
-		}
-
 		ctx.stroke()
 	}
 
@@ -303,10 +270,10 @@ export class Renderer {
 		ctx.clearRect(0, 0, this.width, this.height)
 		ctx.drawImage(this.webglSpectrogram.getCanvas(), 0, 0)
 
-		const estimator = this.estimatorManager.getResult()
-		const estimators = this.estimatorManager.getResults()
+		const analyzerResult = this.analyzerManager.getResult()
+		const analyzerResults = this.analyzerManager.getResults()
 
-		let pitchyLine = estimators.map((result) => {
+		let pitchyLine = analyzerResults.map((result) => {
 			return result.isPitchyValid()
 				? {
 						frequency: result.pitchyFrequency,
@@ -315,7 +282,6 @@ export class Renderer {
 				: null
 		})
 		this.drawLine(ctx, settings, 'rgb(64, 224, 64)', pitchyLine)
-		// this.drawResonanceLine(ctx, settings, 'rgb(224, 64, 64, 0.5)')
 
 		if (settings.noteGuidelines) {
 			this.renderNoteGuidelines(ctx, settings)
@@ -331,16 +297,16 @@ export class Renderer {
 			this.renderNoteTicks(ctx, settings)
 		}
 
-		// Render estimator results
-		if (estimator) {
-			for (const frequency of estimator.frequencyMaximas) {
+		// Render analyzer results
+		if (analyzerResult) {
+			for (const frequency of analyzerResult.frequencyMaximas) {
 				this.drawTick(ctx, settings, this.width - 120, frequency, null, 18)
 			}
 
-			this.drawTick(ctx, settings, this.width - 220, estimator.fundamentalFrequency, null, 18)
+			this.drawTick(ctx, settings, this.width - 220, analyzerResult.fundamentalFrequency, null, 18)
 
-			if (estimator.isPitchyValid()) {
-				this.drawTracker(ctx, settings, estimator.pitchyFrequency, 'rgb(64, 224, 64)')
+			if (analyzerResult.isPitchyValid()) {
+				this.drawTracker(ctx, settings, analyzerResult.pitchyFrequency, 'rgb(64, 224, 64)')
 			}
 		}
 
@@ -348,8 +314,11 @@ export class Renderer {
 			this.renderMouse(ctx, settings, displayBuffer, mousePosition)
 		}
 
-		if (estimator) {
-			this.renderNoteFeedback(ctx, estimator.isPitchyValid() ? estimator.pitchyFrequency : null)
+		if (analyzerResult) {
+			this.renderNoteFeedback(
+				ctx,
+				analyzerResult.isPitchyValid() ? analyzerResult.pitchyFrequency : null,
+			)
 		}
 	}
 }

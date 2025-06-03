@@ -1,9 +1,9 @@
 import { get, type Writable } from 'svelte/store'
 import { audioSourcesToTargets, audioTargetsToSources, type AudioTargets } from './audio_sources'
 import { type SpectrogramSettings } from './settings'
-import { FFT } from './estimators/fft'
-import { apply, blackmanWindow } from './estimators/audio_functions'
-import { preEmphasis } from './estimators/audio_filters'
+import { FFT } from './math/fft'
+import { apply, blackmanWindow } from './math/audio_functions'
+import { preEmphasis } from './math/audio_filters'
 
 export const MAX_HISTORY = 2048
 

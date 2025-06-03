@@ -1,14 +1,11 @@
 import { PitchDetector } from 'pitchy'
 import { MAX_HISTORY, type AudioManager } from '../audio'
-import { findFundamentalFrequency, findMaximumFrequencies } from './custom_estimator'
+import { findFundamentalFrequency, findLoudestFrequencies } from './basic_analyzer'
 import { type SpectrogramSettings } from '../settings'
-import { computeLPCCoefficients, computeLPCFormants } from './lpc'
-import { EfficientFormant } from './efficient_formant'
 
-export class EstimatorManager {
-	private results: EstimatorResult[] = []
+export class AnalyzerManager {
+	private results: AnalyzerResult[] = []
 	private pitchDetector: PitchDetector<Float32Array> | null = null
-	private efficientFormant: EfficientFormant | null = null
 
 	constructor(private audioManager: AudioManager) {}
 
@@ -24,7 +21,7 @@ export class EstimatorManager {
 
 		const { frequency: fundamentalFrequency, confidence: fundamentalConfidence } =
 			findFundamentalFrequency(this.audioManager, audioBuffer, 8)
-		const frequencyMaximas = findMaximumFrequencies(this.audioManager, audioBuffer, 3)
+		const frequencyMaximas = findLoudestFrequencies(this.audioManager, audioBuffer, 3)
 
 		if (!this.pitchDetector || this.pitchDetector.inputLength !== timeBuffer.length) {
 			this.pitchDetector = PitchDetector.forFloat32Array(timeBuffer.length)
@@ -34,33 +31,21 @@ export class EstimatorManager {
 			sampleRate,
 		)
 
-		// if (!this.efficientFormant || this.efficientFormant.sampleRate !== sampleRate) {
-		// 	 this.efficientFormant = new EfficientFormant(sampleRate)
-		// }
-		// const formants = this.efficientFormant.estimate(timeBuffer.slice(), 4)
-		// console.log(formants)
-
-		// const lpcCoefficients = computeLPCCoefficients(timeBuffer.slice(), sampleRate, 8)
-		// const formants = computeLPCFormants(lpcCoefficients, sampleRate)
-		// console.log(formants)
-		const lpcCoefficients = new Float32Array()
-
 		if (this.results.length >= MAX_HISTORY) {
 			this.results.pop()
 		}
 		this.results.unshift(
-			new EstimatorResult(
+			new AnalyzerResult(
 				fundamentalFrequency,
 				fundamentalConfidence,
 				frequencyMaximas,
 				pitchyFrequency,
 				pitchyConfidence,
-				lpcCoefficients,
 			),
 		)
 	}
 
-	getResult(): EstimatorResult | null {
+	getResult(): AnalyzerResult | null {
 		return this.results[0]
 	}
 
@@ -69,14 +54,13 @@ export class EstimatorManager {
 	}
 }
 
-export class EstimatorResult {
+export class AnalyzerResult {
 	constructor(
 		public fundamentalFrequency: number,
 		public fundamentalConfidence: number,
 		public frequencyMaximas: number[],
 		public pitchyFrequency: number,
 		public pitchyConfidence: number,
-		public lpcCoefficients: Float32Array,
 	) {}
 
 	isPitchyValid() {
