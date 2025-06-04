@@ -139,6 +139,25 @@ export class AudioManager {
 	getNyquist() {
 		return this.sampleRate! / 2.0
 	}
+
+	destroy() {
+		if (this.oscillatorNode) {
+			this.oscillatorNode.stop()
+			this.oscillatorNode.disconnect()
+		}
+		if (this.gainNode) {
+			this.gainNode.disconnect()
+		}
+		if (this.microphone) {
+			this.microphone.destroy()
+		}
+		if (this.desktop) {
+			this.desktop.destroy()
+		}
+		if (this.audioContext) {
+			this.audioContext.close()
+		}
+	}
 }
 
 export class AudioBuffer {

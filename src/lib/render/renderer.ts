@@ -321,4 +321,8 @@ export class Renderer {
 			)
 		}
 	}
+
+	destroy() {
+		this.webglSpectrogram.destroy()
+	}
 }

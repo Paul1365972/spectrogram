@@ -12,18 +12,18 @@
 
 	let canvas: HTMLCanvasElement
 
-	let initialized: boolean = $state(false)
-	let settings = get(settingsStore)
-	let paused = false
-
 	let audioManager: AudioManager
 	let analyzerManager: AnalyzerManager
 	let renderer: Renderer
+
+	let initialized: boolean = $state(false)
+	let paused = false
 
 	let toneEnabled: boolean = false
 	let mousePosition: [number, number] = [0, 0]
 
 	let pitchTracker: PitchTracker
+	let animationFrameId: number | null = null
 
 	onMount(() => {
 		audioManager = new AudioManager()
@@ -39,6 +39,16 @@
 			window.removeEventListener('mousedown', init)
 			window.removeEventListener('touchend', init)
 			window.removeEventListener('keydown', handleKeydown)
+
+			if (animationFrameId !== null) {
+				cancelAnimationFrame(animationFrameId)
+			}
+
+			if (initialized) {
+				renderer?.destroy()
+				analyzerManager?.destroy()
+				audioManager?.destroy()
+			}
 		}
 	})
 
@@ -49,7 +59,7 @@
 			audioManager.initialize()
 			await analyzerManager.initialize()
 			initialized = true
-			requestAnimationFrame(render)
+			animationFrameId = requestAnimationFrame(render)
 		}
 	}
 
@@ -82,7 +92,7 @@
 
 	function updateOscillatorFrequency() {
 		const percentage = 1.0 - mousePosition[1] / window.innerHeight
-		const freq = scale(percentage, settings)
+		const freq = scale(percentage, get(settingsStore))
 		audioManager?.setOscillatorFrequency(freq)
 	}
 
@@ -97,7 +107,7 @@
 			}
 			toneEnabled = true
 			updateOscillatorFrequency()
-			audioManager?.setGain(settings.toneVolume / 100)
+			audioManager?.setGain(get(settingsStore).toneVolume / 100)
 		}
 	}
 
@@ -124,7 +134,7 @@
 
 	function render() {
 		audioManager.updateSources(settingsStore)
-		settings = get(settingsStore)
+		const settings = get(settingsStore)
 		if (!paused) {
 			audioManager.update(settings)
 			analyzerManager.update(settings)
@@ -139,23 +149,37 @@
 			}
 		}
 		renderer!.render(settings, mousePosition, paused)
-		requestAnimationFrame(render)
+		animationFrameId = requestAnimationFrame(render)
 	}
 </script>
 
-<canvas
-	bind:this={canvas}
-	onmousemove={handleMove}
-	onmousedown={handleStart}
-	onmouseup={handleEnd}
-	ontouchstart={handleStart}
-	ontouchmove={handleMove}
-	ontouchend={handleEnd}
-	ontouchcancel={handleEnd}
->
-</canvas>
+<div class="spectrogram-container">
+	<canvas
+		bind:this={canvas}
+		onmousemove={handleMove}
+		onmousedown={handleStart}
+		onmouseup={handleEnd}
+		ontouchstart={handleStart}
+		ontouchmove={handleMove}
+		ontouchend={handleEnd}
+		ontouchcancel={handleEnd}
+	>
+	</canvas>
+
+	{#if !initialized}
+		<div class="click-anywhere">
+			<h2>Click anywhere</h2>
+		</div>
+	{/if}
+</div>
 
 <style>
+	.spectrogram-container {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+
 	canvas {
 		width: 100%;
 		height: 100%;
@@ -164,5 +188,20 @@
 		-webkit-touch-callout: none;
 		-webkit-user-select: none;
 		user-select: none;
+	}
+
+	.click-anywhere {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		font-size: 2rem;
+		font-weight: normal;
+		color: white;
 	}
 </style>

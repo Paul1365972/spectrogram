@@ -52,6 +52,9 @@ export class AnalyzerManager {
 	getResults() {
 		return this.results
 	}
+
+	destroy() {
+	}
 }
 
 export class AnalyzerResult {

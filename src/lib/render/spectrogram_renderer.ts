@@ -369,7 +369,7 @@ export class SpectrogramRenderer {
 		return this.canvas
 	}
 
-	dispose() {
+	destroy() {
 		this.gl.deleteProgram(this.program)
 		this.gl.deleteBuffer(this.vertexBuffer)
 		this.gl.deleteTexture(this.dataTexture)
